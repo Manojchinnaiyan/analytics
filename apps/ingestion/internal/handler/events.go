@@ -179,11 +179,17 @@ func (h *EventHandler) BatchIngest(c fiber.Ctx) error {
 				e.UserID = u
 			}
 		}
-		e.IP = c.IP()
+		// Real visitor IP: behind Cloudflare (tunnel/proxy) it's in CF-Connecting-IP;
+		// otherwise fall back to the connection IP (trusted X-Forwarded-For).
+		clientIP := c.Get("CF-Connecting-IP")
+		if clientIP == "" {
+			clientIP = c.IP()
+		}
+		e.IP = clientIP
 		// Server-side IP geolocation (authoritative, like Amplitude/PostHog) —
 		// overrides the SDK's browser-locale/timezone guess when the DB resolves it.
 		if h.geo.Enabled() {
-			if country, region, city := h.geo.Lookup(e.IP); country != "" {
+			if country, region, city := h.geo.Lookup(clientIP); country != "" {
 				e.Country, e.Region, e.City = country, region, city
 			}
 		}
