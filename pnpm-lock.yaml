@@ -107,6 +107,9 @@ importers:
 
   packages/sdk-node:
     devDependencies:
+      '@types/node':
+        specifier: ^22.10.0
+        version: 22.15.21
       tsup:
         specifier: ^8.5.0
         version: 8.5.1(jiti@2.7.0)(postcss@8.5.15)(typescript@5.8.3)
