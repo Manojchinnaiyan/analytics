@@ -63,14 +63,20 @@ if [ "$RELOAD_CADDY" = "1" ]; then
     || $COMPOSE restart caddy
 fi
 
-# Health-gate on query if it's running.
+# Health-gate on query. The Go images are static binaries (no shell/wget/curl),
+# so probe the endpoint over the compose network with a throwaway curl container.
 echo "▶ Waiting for query health…"
-for i in $(seq 1 30); do
-  if $COMPOSE exec -T query wget -qO- http://localhost:4001/health >/dev/null 2>&1; then
-    echo "✓ query healthy"; break
-  fi
-  sleep 2
-done
+QID=$($COMPOSE ps -q query 2>/dev/null || true)
+NET=$(docker inspect "$QID" -f '{{range $k,$_ := .NetworkSettings.Networks}}{{$k}}{{end}}' 2>/dev/null || true)
+if [ -n "$NET" ]; then
+  for i in $(seq 1 30); do
+    if docker run --rm --network "$NET" curlimages/curl:8.11.1 -sf -m 3 http://query:4001/health >/dev/null 2>&1; then
+      echo "✓ query healthy"; break
+    fi
+    [ "$i" = 30 ] && echo "⚠ query did not report healthy in 60s (check: docker logs inspectuser_query)"
+    sleep 2
+  done
+fi
 
 echo "$NEW" > "$LAST_FILE"           # record only after a clean run
 echo "▶ Status:"; $COMPOSE ps
