@@ -1,4 +1,4 @@
-import { getBrowserInfo, getUTMParams, getClickIds, getDeviceContext, detectCountry } from './enricher'
+import { getBrowserInfo, getUTMParams, getClickIds, getDeviceContext, detectCountry, getLinkCode } from './enricher'
 import { getDeviceId, getSession, refreshSession, nextSequence, adoptLinkedDevice, decorateCrossDomain } from './session'
 import { startSessionReplay } from './replay'
 import type { Event, EventOptions, IdentifyOperation, RevenueOptions, SDKConfig } from './types'
@@ -501,6 +501,8 @@ export class InspectUserClient {
       utm_campaign: utm['utm_campaign'],
       utm_term: utm['utm_term'],
       utm_content: utm['utm_content'],
+      // Branded short-link code (?il=<code>) — resolved to utm_* server-side.
+      link_code: getLinkCode() || undefined,
       referrer: document.referrer,
       sdk_version: SDK_VERSION,
     }

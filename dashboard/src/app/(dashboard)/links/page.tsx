@@ -10,8 +10,10 @@ import { Card } from '@/components/ui/Card'
 import { Select } from '@/components/ui/Select'
 import { SocialIcon } from '@/components/SocialIcon'
 
-// Clean short-link domain for sharing; ingest base is where the SDK posts events.
-const SHORT_BASE = process.env.NEXT_PUBLIC_SHORTLINK_URL || 'https://inspectuser.com'
+// Smart links live on the CUSTOMER's own domain: <destination>/?il=<code>. The
+// destination page's SDK reads the code and the backend resolves it to utm_*, so
+// the shareable link is the user's domain (not inspectuser.com). INGEST_BASE is
+// where the SDK posts events.
 const INGEST_BASE = process.env.NEXT_PUBLIC_INGEST_PUBLIC_URL || 'https://ingest.inspectuser.com'
 const DEMO_BASE = process.env.NEXT_PUBLIC_DEMO_PUBLIC_URL || 'https://demo.inspectuser.com'
 
@@ -19,6 +21,7 @@ interface SmartLink {
   id: string
   name: string
   slug: string
+  destination: string
   utm_source: string
   utm_medium: string
   utm_campaign: string
@@ -145,7 +148,7 @@ export default function LinksPage() {
             </thead>
             <tbody>
               {links.map(l => {
-                const shortUrl = `${SHORT_BASE}/${l.slug}`
+                const shortUrl = `${l.destination}${l.destination.includes('?') ? '&' : '?'}il=${l.slug}`
                 return (
                   <tr key={l.id} className="border-b border-[var(--color-border)] last:border-0 hover:bg-[var(--color-surface-muted)]">
                     <td className="px-5 py-3">

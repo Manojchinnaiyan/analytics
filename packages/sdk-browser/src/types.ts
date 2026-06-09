@@ -83,6 +83,7 @@ export interface Event {
   utm_campaign?: string
   utm_term?: string
   utm_content?: string
+  link_code?: string
   referrer?: string
   sdk_version: string
 }

@@ -82,6 +82,13 @@ export function getClickIds(): Record<string, string> {
   return out
 }
 
+// Branded short-link code from ?il=<code> — a link on the CUSTOMER's own domain
+// that the backend resolves to utm_source/medium/campaign. Returns '' if absent.
+export function getLinkCode(): string {
+  if (typeof window === 'undefined') return ''
+  return new URLSearchParams(window.location.search).get('il') || ''
+}
+
 export interface DeviceContext {
   screen_width?: number
   screen_height?: number

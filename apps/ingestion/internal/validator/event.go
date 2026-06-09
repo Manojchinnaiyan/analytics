@@ -32,6 +32,9 @@ type Event struct {
 	Referrer        string                 `json:"referrer"`
 	SDKVersion      string                 `json:"sdk_version"`
 	IP              string                 `json:"ip"`
+	// Branded short-link code (?il=<code>) — resolved server-side to utm_* so the
+	// backend owns the code→source mapping and the link stays on the customer domain.
+	LinkCode        string                 `json:"link_code"`
 }
 
 type BatchRequest struct {

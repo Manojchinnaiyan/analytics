@@ -8,10 +8,39 @@ import (
 	"github.com/inspectuser/ingestion/internal/geo"
 	"github.com/inspectuser/ingestion/internal/kafka"
 	"github.com/inspectuser/ingestion/internal/validator"
+	"github.com/bytedance/sonic"
 	"github.com/gofiber/fiber/v3"
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
+
+// resolveLinkCode expands a branded short-link code (?il=<code>) into utm_* by
+// reading its config from Redis (link:<code>), so the link can live on the
+// customer's own domain and the backend owns the code→source mapping. Only fills
+// utm fields that weren't already set explicitly.
+func (h *EventHandler) resolveLinkCode(ctx context.Context, e *validator.Event) {
+	raw, err := h.rdb.Get(ctx, "link:"+e.LinkCode).Result()
+	if err != nil {
+		return
+	}
+	var cfg struct {
+		UTMSource   string `json:"utm_source"`
+		UTMMedium   string `json:"utm_medium"`
+		UTMCampaign string `json:"utm_campaign"`
+	}
+	if sonic.Unmarshal([]byte(raw), &cfg) != nil {
+		return
+	}
+	if e.UTMSource == "" {
+		e.UTMSource = cfg.UTMSource
+	}
+	if e.UTMMedium == "" {
+		e.UTMMedium = cfg.UTMMedium
+	}
+	if e.UTMCampaign == "" {
+		e.UTMCampaign = cfg.UTMCampaign
+	}
+}
 
 type EventHandler struct {
 	producer *kafka.Producer
@@ -192,6 +221,11 @@ func (h *EventHandler) BatchIngest(c fiber.Ctx) error {
 			if country, region, city := h.geo.Lookup(clientIP); country != "" {
 				e.Country, e.Region, e.City = country, region, city
 			}
+		}
+		// Branded short-link: ?il=<code> on a customer-domain link → resolve to
+		// utm_* server-side (the backend owns the code→source mapping).
+		if e.LinkCode != "" {
+			h.resolveLinkCode(dctx, &e)
 		}
 		if id := e.UserID; id != "" {
 			identities[id] = struct{}{}
