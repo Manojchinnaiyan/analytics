@@ -1,0 +1,21 @@
+# Cloudflare Tunnel ingress. Every public hostname routes to Caddy, the internal
+# HTTP router (which then proxies to the right service). Credentials file is
+# server-local (gitignored); the tunnel UUID is not a secret.
+tunnel: 86d0e905-8e3d-4578-92e4-d6690cb9189d
+credentials-file: /etc/cloudflared/creds.json
+
+ingress:
+  - hostname: inspectuser.com
+    service: http://caddy:80
+  - hostname: www.inspectuser.com
+    service: http://caddy:80
+  - hostname: app.inspectuser.com
+    service: http://caddy:80
+  - hostname: api.inspectuser.com
+    service: http://caddy:80
+  - hostname: ingest.inspectuser.com
+    service: http://caddy:80
+  - hostname: go.inspectuser.com
+    service: http://caddy:80
+  # Anything else → 404 (don't accidentally expose internals).
+  - service: http_status:404
