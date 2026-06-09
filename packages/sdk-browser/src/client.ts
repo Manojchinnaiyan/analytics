@@ -1,5 +1,6 @@
 import { getBrowserInfo, getUTMParams, getClickIds, getDeviceContext, detectCountry } from './enricher'
 import { getDeviceId, getSession, refreshSession, nextSequence, adoptLinkedDevice, decorateCrossDomain } from './session'
+import { startSessionReplay } from './replay'
 import type { Event, EventOptions, IdentifyOperation, RevenueOptions, SDKConfig } from './types'
 
 const SDK_VERSION = '0.2.0'
@@ -218,6 +219,11 @@ export class InspectUserClient {
       crossDomain: [],
       ...config,
       autoCapture: { ...defaultAutoCapture, ...(config.autoCapture ?? {}) },
+      sessionReplay: {
+        enabled: false, sampleRate: 1, serverUrl: '',
+        maskAllInputs: true, maskTextSelector: '.mask', blockSelector: '.no-record',
+        ...(config.sessionReplay ?? {}),
+      },
     }
     adoptLinkedDevice() // continue as one device if arriving via a cross-domain link
     this.deviceId = getDeviceId()
@@ -250,6 +256,21 @@ export class InspectUserClient {
     this.setupPageUnload()
     // Try to drain anything restored from storage right away.
     if (this.queue.length > 0) this.flush()
+
+    // Session replay (rrweb) — one init() does analytics + replay. Lazy-loads,
+    // respects opt-out/consent, and uploads batched rrweb events to /replay.
+    if (this.config.sessionReplay.enabled && !this.optedOut) {
+      startSessionReplay({
+        apiKey: this.config.apiKey,
+        serverUrl: this.config.sessionReplay.serverUrl || this.config.serverUrl,
+        sessionId: this.sessionId,
+        getDistinctId: () => this.userId || this.deviceId,
+        sampleRate: this.config.sessionReplay.sampleRate,
+        maskAllInputs: this.config.sessionReplay.maskAllInputs,
+        maskTextSelector: this.config.sessionReplay.maskTextSelector,
+        blockSelector: this.config.sessionReplay.blockSelector,
+      })
+    }
   }
 
   identify(userId: string, properties?: Record<string, unknown>): void {

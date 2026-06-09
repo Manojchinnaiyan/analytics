@@ -20,6 +20,17 @@ export interface SDKConfig {
   // Hostnames to link across (e.g. ['checkout.com']). Outbound links to these get
   // the device id appended so a multi-domain journey counts as one visitor.
   crossDomain?: string[]
+  // Session replay (rrweb) — folded into this SDK so one init() does analytics
+  // AND replay (like PostHog/Amplitude). rrweb is lazy-loaded from a CDN so it
+  // never blocks page render. Off unless enabled.
+  sessionReplay?: {
+    enabled?: boolean
+    sampleRate?: number        // 0..1 fraction of sessions to record (default 1)
+    serverUrl?: string         // base for POST /replay; defaults to the SDK serverUrl
+    maskAllInputs?: boolean    // default true — input values never recorded (PII-safe)
+    maskTextSelector?: string  // CSS selector whose text is redacted (default '.mask')
+    blockSelector?: string     // CSS selector skipped entirely (default '.no-record')
+  }
 }
 
 export interface RevenueOptions {
