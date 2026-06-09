@@ -1,0 +1,15 @@
+# Auto-HTTPS reverse proxy. Each block = one public subdomain → internal service.
+# Caddy fetches & renews Let's Encrypt certs automatically (needs ports 80/443
+# open and the domains' DNS A-records pointing at this server's IP).
+
+{$APP_DOMAIN} {
+	reverse_proxy dashboard:3000
+}
+
+{$API_DOMAIN} {
+	reverse_proxy query:4001
+}
+
+{$INGEST_DOMAIN} {
+	reverse_proxy ingestion:4000
+}

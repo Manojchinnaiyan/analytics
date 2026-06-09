@@ -1,0 +1,407 @@
+/* Created by Peek from getsleek.io — extended for Amplitude Clone */
+@import "tailwindcss";
+
+@theme {
+  /* Font families — Amplitude uses IBM Plex Sans */
+  --font-ui-serif: ui-serif, serif;
+  --font-inter-tight: 'IBM Plex Sans', -apple-system, 'Segoe UI', sans-serif;
+  --font-monospace: monospace, sans-serif;
+  --font-jetbrains-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  /* Font sizes */
+  --text-10: 10px; --text-11: 11px; --text-12: 12px; --text-13: 13px;
+  --text-14: 14px; --text-15: 15px; --text-16: 16px; --text-18: 18px;
+  --text-20: 20px; --text-24: 24px; --text-26: 26px; --text-30: 30px;
+  --text-36: 36px; --text-46: 46px; --text-48: 48px; --text-96: 96px;
+
+  /* Leading / tracking */
+  --leading-large-title: 1.00;
+  --leading-h1: 1.25;         --tracking-h1: -1.2px;
+  --leading-h2: 1.00;         --tracking-h2: -0.96px;
+  --leading-large-title-46: 1.00; --tracking-large-title-46: -1.38px;
+  --leading-h2-36: 1.11;      --tracking-h2-36: -0.72px;
+  --leading-title: 1.50;
+  --leading-h3: 1.50;         --tracking-h3: -0.52px;
+  --leading-body: 1.63;       --tracking-body: -0.6px;
+  --leading-body-24: 1.63;
+  --leading-subheading: 1.00;
+  --leading-h3-18: 1.56;
+  --leading-body-18: 1.63;
+  --leading-h3-16: 1.50;
+  --leading-header: 1.50;
+  --leading-small-body: 1.50;
+  --leading-body-15: 1.87;
+  --leading-link: 1.43;
+  --leading-small-body-14: 1.43;
+  --leading-body-13: 1.50;
+  --leading-body-12: 1.33;    --tracking-body-12: 1.2px;
+  --leading-caption: 1.50;
+  --leading-caption-12: 1.50;
+  --leading-body-12-400: 1.33;
+  --leading-caption-12-400: 1.33;
+  --leading-small: 1.63;
+  --leading-small-10: 1.00;
+  --leading-small-10-500: 1.50; --tracking-small-10-500: 3px;
+
+  /* Amplitude palette (from app.amplitude.com) */
+  --color-brand: #0052F2;
+  --color-brand-hover: #0C3FA7;
+  --color-brand-light: #4C85F5;
+  --color-brand-soft: #EEF3FD;
+  --color-surface: #FFFFFF;
+  --color-surface-muted: #F4F5F6;
+  --color-border: #DEDFE2;
+  --color-text: #18181B;
+  --color-text-muted: #6F7480;
+  --color-text-subtle: #8A8E99;
+}
+
+@layer components {
+  .type-large-title {
+    font-family: var(--font-ui-serif);
+    font-size: var(--text-96);
+    font-weight: 400;
+    line-height: var(--leading-large-title);
+  }
+  .type-h1 {
+    font-family: var(--font-inter-tight);
+    font-size: var(--text-48);
+    font-weight: 500;
+    line-height: var(--leading-h1);
+    letter-spacing: var(--tracking-h1);
+  }
+  .type-h2 {
+    font-family: var(--font-inter-tight);
+    font-size: var(--text-48);
+    font-weight: 400;
+    line-height: var(--leading-h2);
+    letter-spacing: var(--tracking-h2);
+  }
+  .type-large-title-46 {
+    font-family: var(--font-inter-tight);
+    font-size: var(--text-46);
+    font-weight: 600;
+    line-height: var(--leading-large-title-46);
+    letter-spacing: var(--tracking-large-title-46);
+  }
+  .type-h2-36 {
+    font-family: var(--font-inter-tight);
+    font-size: var(--text-36);
+    font-weight: 400;
+    line-height: var(--leading-h2-36);
+    letter-spacing: var(--tracking-h2-36);
+  }
+  .type-title {
+    font-family: var(--font-monospace);
+    font-size: var(--text-30);
+    font-weight: 500;
+    line-height: var(--leading-title);
+  }
+  .type-h3 {
+    font-family: var(--font-inter-tight);
+    font-size: var(--text-26);
+    font-weight: 600;
+    line-height: var(--leading-h3);
+    letter-spacing: var(--tracking-h3);
+  }
+  .type-body {
+    font-family: var(--font-inter-tight);
+    font-size: var(--text-24);
+    font-weight: 500;
+    line-height: var(--leading-body);
+    letter-spacing: var(--tracking-body);
+  }
+  .type-body-24 {
+    font-family: var(--font-inter-tight);
+    font-size: var(--text-24);
+    font-weight: 400;
+    line-height: var(--leading-body-24);
+  }
+  .type-subheading {
+    font-family: var(--font-inter-tight);
+    font-size: var(--text-20);
+    font-weight: 300;
+    line-height: var(--leading-subheading);
+  }
+  .type-h3-18 {
+    font-family: var(--font-inter-tight);
+    font-size: var(--text-18);
+    font-weight: 500;
+    line-height: var(--leading-h3-18);
+  }
+  .type-body-18 {
+    font-family: var(--font-inter-tight);
+    font-size: var(--text-18);
+    font-weight: 400;
+    line-height: var(--leading-body-18);
+  }
+  .type-h3-16 {
+    font-family: var(--font-inter-tight);
+    font-size: var(--text-16);
+    font-weight: 500;
+    line-height: var(--leading-h3-16);
+  }
+  .type-header {
+    font-family: var(--font-inter-tight);
+    font-size: var(--text-16);
+    font-weight: 400;
+    line-height: var(--leading-header);
+  }
+  .type-small-body {
+    font-family: var(--font-inter-tight);
+    font-size: var(--text-15);
+    font-weight: 500;
+    line-height: var(--leading-small-body);
+  }
+  .type-body-15 {
+    font-family: var(--font-inter-tight);
+    font-size: var(--text-15);
+    font-weight: 400;
+    line-height: var(--leading-body-15);
+  }
+  .type-link {
+    font-family: var(--font-inter-tight);
+    font-size: var(--text-14);
+    font-weight: 500;
+    line-height: var(--leading-link);
+  }
+  .type-small-body-14 {
+    font-family: var(--font-inter-tight);
+    font-size: var(--text-14);
+    font-weight: 400;
+    line-height: var(--leading-small-body-14);
+  }
+  .type-body-13 {
+    font-family: var(--font-inter-tight);
+    font-size: var(--text-13);
+    font-weight: 400;
+    line-height: var(--leading-body-13);
+  }
+  .type-body-12 {
+    font-family: var(--font-inter-tight);
+    font-size: var(--text-12);
+    font-weight: 700;
+    line-height: var(--leading-body-12);
+    letter-spacing: var(--tracking-body-12);
+  }
+  .type-caption {
+    font-family: var(--font-inter-tight);
+    font-size: var(--text-12);
+    font-weight: 600;
+    line-height: var(--leading-caption);
+  }
+  .type-caption-12 {
+    font-family: var(--font-inter-tight);
+    font-size: var(--text-12);
+    font-weight: 500;
+    line-height: var(--leading-caption-12);
+  }
+  .type-body-12-400 {
+    font-family: var(--font-inter-tight);
+    font-size: var(--text-12);
+    font-weight: 400;
+    line-height: var(--leading-body-12-400);
+  }
+  .type-caption-12-400 {
+    font-family: var(--font-jetbrains-mono);
+    font-size: var(--text-12);
+    font-weight: 400;
+    line-height: var(--leading-caption-12-400);
+  }
+  .type-small {
+    font-family: var(--font-inter-tight);
+    font-size: var(--text-11);
+    font-weight: 400;
+    line-height: var(--leading-small);
+  }
+  .type-small-10 {
+    font-family: var(--font-inter-tight);
+    font-size: var(--text-10);
+    font-weight: 600;
+    line-height: var(--leading-small-10);
+  }
+  .type-small-10-500 {
+    font-family: var(--font-inter-tight);
+    font-size: var(--text-10);
+    font-weight: 500;
+    line-height: var(--leading-small-10-500);
+    letter-spacing: var(--tracking-small-10-500);
+  }
+}
+
+/* ── Global base layer — Peek type system applied to native elements ───────── */
+@layer base {
+  * {
+    border-color: var(--color-border);
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    font-family: var(--font-inter-tight);
+    color: var(--color-text);
+    font-size: var(--text-14);
+    line-height: var(--leading-small-body-14);
+    background: var(--color-surface-muted);
+    min-height: 100vh;
+  }
+
+  /* Headings */
+  h1 {
+    font-family: var(--font-inter-tight);
+    font-size: var(--text-30);
+    font-weight: 600;
+    line-height: var(--leading-h3);
+    letter-spacing: var(--tracking-h3);
+    color: var(--color-text);
+  }
+  h2 {
+    font-family: var(--font-inter-tight);
+    font-size: var(--text-26);
+    font-weight: 600;
+    line-height: var(--leading-h3);
+    letter-spacing: var(--tracking-h3);
+    color: var(--color-text);
+  }
+  h3 {
+    font-family: var(--font-inter-tight);
+    font-size: var(--text-20);
+    font-weight: 600;
+    line-height: var(--leading-h3-18);
+    color: var(--color-text);
+  }
+  h4 {
+    font-family: var(--font-inter-tight);
+    font-size: var(--text-16);
+    font-weight: 500;
+    line-height: var(--leading-h3-16);
+    color: var(--color-text);
+  }
+
+  /* Body */
+  p {
+    font-family: var(--font-inter-tight);
+    font-size: var(--text-15);
+    font-weight: 400;
+    line-height: var(--leading-body-15);
+    color: var(--color-text-muted);
+  }
+
+  /* Form labels */
+  label {
+    font-family: var(--font-inter-tight);
+    font-size: var(--text-12);
+    font-weight: 600;
+    line-height: var(--leading-caption);
+    color: var(--color-text);
+  }
+
+  /* Inputs & selects inherit the UI font */
+  input, select, textarea, button {
+    font-family: var(--font-inter-tight);
+  }
+
+  /* Monospace */
+  code, pre, kbd, samp {
+    font-family: var(--font-jetbrains-mono);
+    font-size: var(--text-13);
+  }
+
+  /* Links */
+  a {
+    color: var(--color-brand);
+    text-decoration: none;
+    transition: color 0.15s ease;
+  }
+  a:hover {
+    color: var(--color-brand-hover);
+  }
+
+  /* Small print */
+  small {
+    font-family: var(--font-inter-tight);
+    font-size: var(--text-12);
+    line-height: var(--leading-caption-12);
+    color: var(--color-text-subtle);
+  }
+}
+
+/* ── Amplitude flat surfaces (class names kept for compatibility) ──────────── */
+@layer components {
+  /* White card with hairline border + very subtle shadow (Amplitude style) */
+  .glass {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    box-shadow: rgba(0, 0, 0, 0.04) 0px 1px 3px 0px;
+  }
+
+  /* Nav chrome — solid white, no shadow (borders define edges) */
+  .glass-chrome {
+    background: var(--color-surface);
+    border-color: var(--color-border);
+    box-shadow: none;
+    border-radius: 0;
+  }
+
+  /* Subtle inner control surface (inputs, segmented tabs) */
+  .glass-soft {
+    background: var(--color-surface-muted);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+  }
+
+  /* Solid brand fill (no gradient) */
+  .accent-gradient {
+    background: var(--color-brand);
+  }
+
+  /* Brand button */
+  .btn-brand {
+    background: var(--color-brand);
+    color: #fff;
+    border-radius: 6px;
+    transition: background 0.15s ease;
+  }
+  .btn-brand:hover { background: var(--color-brand-hover); }
+
+  /* Consistent form control — fixed 34px height, no tall line-box */
+  .ctrl {
+    height: 34px;
+    padding: 0 10px;
+    background: #fff;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    font-family: var(--font-inter-tight);
+    font-size: var(--text-14);
+    line-height: 1;
+    color: var(--color-text);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: border-color 0.12s ease, box-shadow 0.12s ease;
+  }
+  .ctrl::placeholder { color: var(--color-text-subtle); }
+  .ctrl:hover { border-color: #c7cbd6; }
+  .ctrl:focus, .ctrl:focus-within {
+    outline: none;
+    border-color: #98a0b8; /* neutral grey on focus — no blue */
+    box-shadow: none;
+  }
+}
+
+/* Remove the default blue focus ring/outline on all native form controls */
+@layer base {
+  input:focus, select:focus, textarea:focus, button:focus {
+    outline: none;
+  }
+  input:focus-visible, select:focus-visible, textarea:focus-visible {
+    border-color: #98a0b8;
+    box-shadow: none;
+  }
+}

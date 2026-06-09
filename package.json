@@ -1,0 +1,15 @@
+{
+  "name": "amplitude-clone",
+  "private": true,
+  "workspaces": [
+    "dashboard",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:dashboard": "pnpm --filter @amplitude-clone/dashboard dev",
+    "build:sdk": "pnpm --filter @amplitude-clone/browser build",
+    "infra:up": "docker compose -f infra/docker-compose.yml up -d",
+    "infra:down": "docker compose -f infra/docker-compose.yml down"
+  },
+  "packageManager": "pnpm@9.15.4"
+}

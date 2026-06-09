@@ -1,0 +1,192 @@
+# Production stack for a single VPS (Contabo/amd64). Differences vs the dev
+# compose: data stores are NOT published to the host (internal network only),
+# the app services sit behind Caddy (auto-HTTPS), and the dashboard is built with
+# PUBLIC api URLs (NEXT_PUBLIC_* is baked at build time, so it must be the real
+# domain, never localhost). Run with:  docker compose -f docker-compose.prod.yml up -d --build
+services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.3
+    container_name: amplitude_clickhouse
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+      - ./clickhouse/config.xml:/etc/clickhouse-server/config.d/config.xml
+      - ./clickhouse/migrations:/docker-entrypoint-initdb.d
+    environment:
+      CLICKHOUSE_DB: ${CLICKHOUSE_DB}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
+    ulimits:
+      nofile: { soft: 262144, hard: 262144 }
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.7.0
+    container_name: amplitude_zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper
+    restart: unless-stopped
+
+  kafka:
+    image: confluentinc/cp-kafka:7.7.0
+    container_name: amplitude_kafka
+    depends_on: [zookeeper]
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      # Internal-only listener (no host-published port in prod).
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT_INTERNAL://kafka:29092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT_INTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    volumes:
+      - kafka_data:/var/lib/kafka
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "kafka:29092", "--list"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: amplitude_postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: amplitude_redis
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  ingestion:
+    build: { context: ../apps/ingestion, dockerfile: Dockerfile }
+    container_name: amplitude_ingestion
+    environment:
+      PORT: "4000"
+      KAFKA_BROKER: kafka:29092
+      KAFKA_TOPIC: ${KAFKA_TOPIC}
+      REDIS_ADDR: redis:6379
+      POSTGRES_DSN: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+    depends_on:
+      kafka: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      postgres: { condition: service_healthy }
+    restart: unless-stopped
+
+  worker:
+    build: { context: ../apps/worker, dockerfile: Dockerfile }
+    container_name: amplitude_worker
+    environment:
+      KAFKA_BROKER: kafka:29092
+      KAFKA_TOPIC: ${KAFKA_TOPIC}
+      KAFKA_GROUP_ID: ${KAFKA_GROUP_ID}
+      CLICKHOUSE_ADDR: clickhouse:9000
+      CLICKHOUSE_DB: ${CLICKHOUSE_DB}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
+      BATCH_SIZE: "5000"
+      FLUSH_INTERVAL_MS: "1000"
+    depends_on:
+      kafka: { condition: service_healthy }
+      clickhouse: { condition: service_healthy }
+    restart: unless-stopped
+
+  query:
+    build: { context: ../apps/query, dockerfile: Dockerfile }
+    container_name: amplitude_query
+    environment:
+      PORT: "4001"
+      CLICKHOUSE_ADDR: clickhouse:9000
+      CLICKHOUSE_DB: ${CLICKHOUSE_DB}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
+      POSTGRES_DSN: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+      REDIS_ADDR: redis:6379
+      JWT_SECRET: ${JWT_SECRET}
+      APP_URL: ${PUBLIC_APP_URL}
+      API_URL: ${PUBLIC_API_URL}
+      R2_ENDPOINT: ${R2_ENDPOINT:-}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
+      R2_BUCKET: ${R2_BUCKET:-klyra-replays}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-Klyra <no-reply@klyra.local>}
+    depends_on:
+      clickhouse: { condition: service_healthy }
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    restart: unless-stopped
+
+  dashboard:
+    build:
+      context: ../dashboard
+      dockerfile: Dockerfile
+      args:
+        # PUBLIC urls — baked into the browser bundle at build time.
+        NEXT_PUBLIC_QUERY_API_URL: ${PUBLIC_API_URL}
+        NEXT_PUBLIC_INGESTION_API_URL: ${PUBLIC_INGEST_URL}
+        NEXT_PUBLIC_BRAND_NAME: ${BRAND_NAME:-Klyra}
+        NEXT_PUBLIC_BRAND_TAGLINE: ${BRAND_TAGLINE:-Clarity for every product decision.}
+        NEXT_PUBLIC_BRAND_SCOPE: ${BRAND_SCOPE:-@klyra}
+    container_name: amplitude_dashboard
+    depends_on: [query, ingestion]
+    restart: unless-stopped
+
+  # Reverse proxy + automatic HTTPS (Let's Encrypt). The ONLY publicly-exposed
+  # service. Routes the three public subdomains to the internal services.
+  caddy:
+    image: caddy:2-alpine
+    container_name: amplitude_caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN}
+      API_DOMAIN: ${API_DOMAIN}
+      INGEST_DOMAIN: ${INGEST_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [dashboard, query, ingestion]
+    restart: unless-stopped
+
+volumes:
+  clickhouse_data:
+  zookeeper_data:
+  kafka_data:
+  postgres_data:
+  redis_data:
+  caddy_data:
+  caddy_config:

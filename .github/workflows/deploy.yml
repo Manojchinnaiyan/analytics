@@ -1,0 +1,44 @@
+name: Deploy
+
+# Runs ONLY after the CI workflow succeeds on main (so a broken build never
+# deploys), or manually via the Actions tab.
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to VPS
+    runs-on: ubuntu-latest
+    # Gate: manual dispatch, OR the CI run that triggered this finished green.
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          command_timeout: 30m
+          script: |
+            set -euo pipefail
+            cd "${{ secrets.VPS_PATH }}"
+            echo "▶ Pulling latest…"
+            git fetch --all
+            git reset --hard origin/main
+            cd infra
+            echo "▶ Building + restarting…"
+            docker compose -f docker-compose.prod.yml build
+            docker compose -f docker-compose.prod.yml up -d
+            echo "▶ Pruning old images…"
+            docker image prune -f
+            echo "▶ Status:"
+            docker compose -f docker-compose.prod.yml ps
