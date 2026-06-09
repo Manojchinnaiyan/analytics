@@ -169,12 +169,11 @@ services:
 
   # Reverse proxy + automatic HTTPS (Let's Encrypt). The ONLY publicly-exposed
   # service. Routes the three public subdomains to the internal services.
+  # Internal HTTP router only — no public ports. Reached by cloudflared on the
+  # Docker network; TLS terminates at Cloudflare's edge.
   caddy:
     image: caddy:2-alpine
     container_name: inspectuser_caddy
-    ports:
-      - "80:80"
-      - "443:443"
     environment:
       APP_DOMAIN: ${APP_DOMAIN}
       API_DOMAIN: ${API_DOMAIN}
@@ -184,6 +183,20 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     depends_on: [dashboard, query, ingestion]
+    restart: unless-stopped
+
+  # Cloudflare Tunnel: outbound-only connector. Nothing is published on the host,
+  # so the origin IP is invisible — all public traffic arrives via Cloudflare
+  # (which absorbs DDoS) and is routed to caddy:80. Configure the tunnel's public
+  # hostnames (app/api/ingest/go/apex/www) → service http://caddy:80.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: inspectuser_cloudflared
+    command: tunnel --no-autoupdate --config /etc/cloudflared/config.yml run
+    volumes:
+      - ./cloudflared/config.yml:/etc/cloudflared/config.yml:ro
+      - ./cloudflared/creds.json:/etc/cloudflared/creds.json:ro
+    depends_on: [caddy]
     restart: unless-stopped
 
 volumes:

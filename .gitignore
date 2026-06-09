@@ -39,3 +39,6 @@ infra/.last_deploy_sha
 
 # GeoIP database (server-local, downloaded per-deploy, ~130MB)
 infra/geoip/
+
+# Cloudflare Tunnel credentials (server-local secret)
+infra/cloudflared/creds.json
