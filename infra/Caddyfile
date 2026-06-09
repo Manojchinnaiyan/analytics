@@ -20,3 +20,12 @@
 {$SHORTLINK_DOMAIN:go.inspectuser.com} {
 	reverse_proxy ingestion:4000
 }
+
+# Apex + www also resolve short links: inspectuser.com/<slug> and
+# www.inspectuser.com/<slug>. The bare root bounces to the app (the domain has
+# no marketing site yet). Needs apex + www DNS pointing at this server.
+inspectuser.com, www.inspectuser.com {
+	@root path /
+	redir @root https://app.inspectuser.com 302
+	reverse_proxy ingestion:4000
+}
