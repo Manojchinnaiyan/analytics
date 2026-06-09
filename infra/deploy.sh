@@ -15,7 +15,8 @@ LAST_FILE=".last_deploy_sha"
 OLD=""
 [ -f "$LAST_FILE" ] && OLD="$(cat "$LAST_FILE")"
 
-declare -A SVC                       # services to rebuild
+SVC=""                               # space-separated services to rebuild (set -u safe)
+add_svc() { case " $SVC " in *" $1 "*) ;; *) SVC="$SVC $1" ;; esac; }
 ALL=0
 RELOAD_CADDY=0
 
@@ -31,14 +32,14 @@ else
   echo "▶ Changed since last deploy:"; echo "$CHANGED" | sed 's/^/   /'
   while IFS= read -r f; do
     case "$f" in
-      apps/ingestion/*)                 SVC[ingestion]=1 ;;
-      apps/query/*)                     SVC[query]=1 ;;
-      apps/worker/*)                    SVC[worker]=1 ;;
-      dashboard/*)                      SVC[dashboard]=1 ;;
+      apps/ingestion/*)                 add_svc ingestion ;;
+      apps/query/*)                     add_svc query ;;
+      apps/worker/*)                    add_svc worker ;;
+      dashboard/*)                      add_svc dashboard ;;
       infra/docker-compose.prod.yml)    ALL=1 ;;        # topology change → full apply
       infra/.env|infra/.env.prod.example) ALL=1 ;;      # env (incl. PUBLIC_* build args) → rebuild
       infra/Caddyfile)                  RELOAD_CADDY=1 ;;
-      go.work|go.work.sum)              SVC[ingestion]=1; SVC[query]=1; SVC[worker]=1 ;;
+      go.work|go.work.sum)              add_svc ingestion; add_svc query; add_svc worker ;;
       *) : ;;                                           # packages/, docs, .github, README → no deploy
     esac
   done <<< "$CHANGED"
@@ -48,8 +49,8 @@ if [ "$ALL" = "1" ]; then
   echo "▶ Building all app images…"
   $COMPOSE build
   $COMPOSE up -d
-elif [ ${#SVC[@]} -gt 0 ]; then
-  TARGETS="${!SVC[@]}"
+elif [ -n "${SVC# }" ]; then
+  TARGETS="${SVC# }"
   echo "▶ Rebuilding only: $TARGETS"
   $COMPOSE build $TARGETS
   $COMPOSE up -d $TARGETS
