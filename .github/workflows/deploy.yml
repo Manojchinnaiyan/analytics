@@ -34,11 +34,9 @@ jobs:
             echo "▶ Pulling latest…"
             git fetch --all
             git reset --hard origin/main
-            cd infra
-            echo "▶ Building + restarting…"
-            docker compose -f docker-compose.prod.yml build
-            docker compose -f docker-compose.prod.yml up -d
+            # deploy.sh diffs against infra/.last_deploy_sha and rebuilds ONLY
+            # the services whose source changed (full build on first run / infra change).
+            chmod +x infra/deploy.sh
+            ./infra/deploy.sh
             echo "▶ Pruning old images…"
             docker image prune -f
-            echo "▶ Status:"
-            docker compose -f docker-compose.prod.yml ps

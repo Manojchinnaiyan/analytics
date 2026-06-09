@@ -33,3 +33,6 @@ Thumbs.db
 # Build artifacts
 apps/*/bin/
 packages/*/dist/
+
+# selective-deploy cursor (server-local)
+infra/.last_deploy_sha
