@@ -30,46 +30,22 @@ function timeAgo(iso: string): string {
   return `${Math.floor(h / 24)}d ago`
 }
 
-const QUERY_BASE = process.env.NEXT_PUBLIC_QUERY_API_URL ?? 'http://localhost:4001'
+// Session replay is built into the @inspectuser/browser SDK — no separate
+// recorder snippet. This shows how to turn it on in the existing init().
+function buildSnippet(apiKey: string): string {
+  return `import inspectuser from '@inspectuser/browser'
 
-function buildSnippet(apiKey: string, samplePct: number, mask: boolean): string {
-  return `<!-- InspectUser session-replay recorder — async, sampled, privacy-safe -->
-<script>
-(function () {
-  var SAMPLE = ${(samplePct / 100).toFixed(2)};                 // record ${samplePct}% of sessions
-  if (Math.random() > SAMPLE) return;            // 90%+ of users load NOTHING
-  var start = function () {
-    var s = document.createElement('script');
-    s.async = true;                              // never blocks page render
-    s.src = 'https://cdn.jsdelivr.net/npm/rrweb@2.0.0-alpha.4/dist/rrweb.min.js';
-    s.onload = function () {
-      var SID = sessionStorage._rrSid || (sessionStorage._rrSid = crypto.randomUUID());
-      var buf = [];
-      rrweb.record({
-        emit: function (e) { buf.push(e); },
-        ${mask ? 'maskAllInputs: true,              // PII: input values never recorded' : 'maskAllInputs: false,'}
-        maskTextSelector: '.mask',                 // add class="mask" to redact text
-        blockSelector: '.no-record',               // add class="no-record" to skip elements
-        sampling: { mousemove: 50, scroll: 150, input: 'last' }   // throttle high-freq events
-      });
-      var flush = function (beacon) {
-        if (!buf.length) return;
-        var body = JSON.stringify({ api_key: '${apiKey || 'YOUR_API_KEY'}', session_id: SID, distinct_id: window._distinctId || SID, events: buf });
-        buf = [];
-        if (beacon && navigator.sendBeacon) {
-          navigator.sendBeacon('${QUERY_BASE}/replay', new Blob([body], { type: 'application/json' }));
-        } else {
-          fetch('${QUERY_BASE}/replay', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body, keepalive: true });
-        }
-      };
-      setInterval(function () { flush(false); }, 8000);                       // batched upload
-      document.addEventListener('visibilitychange', function () { if (document.hidden) flush(true); }); // flush on leave
-    };
-    document.head.appendChild(s);
-  };
-  (window.requestIdleCallback || function (f) { setTimeout(f, 1); })(start);  // defer to idle
-})();
-</script>`
+inspectuser.init({
+  apiKey: '${apiKey || 'YOUR_API_KEY'}',
+  serverUrl: 'https://ingest.inspectuser.com',
+  // Session replay is built in — one init() does analytics + replay.
+  sessionReplay: {
+    enabled: true,
+    serverUrl: 'https://api.inspectuser.com',
+    // sampleRate: 1,        // 0..1 — fraction of sessions to record (default: all)
+    // maskAllInputs: true,  // input values never recorded (default, PII-safe)
+  },
+})`
 }
 
 export default function ReplayPage() {
@@ -84,8 +60,6 @@ export default function ReplayPage() {
     qc.invalidateQueries({ queryKey: ['replays', projectId] })
   }
   const [showInstall, setShowInstall] = useState(false)
-  const [samplePct, setSamplePct] = useState(10)
-  const [mask, setMask] = useState(true)
 
   const { data, isLoading } = useQuery({
     queryKey: ['replays', projectId],
@@ -94,38 +68,28 @@ export default function ReplayPage() {
     refetchInterval: 15_000,
   })
   const replays: Replay[] = data?.replays ?? []
-  const snippet = buildSnippet(apiKey, samplePct, mask)
+  const snippet = buildSnippet(apiKey)
 
   const installCard = (
     <Card>
       <button onClick={() => setShowInstall(v => !v)} className="w-full flex items-center justify-between">
-        <span className="flex items-center gap-2 type-h3-16 text-[var(--color-text)]"><ShieldCheck className="h-4 w-4 text-[#0052F2]" /> Install the recorder</span>
+        <span className="flex items-center gap-2 type-h3-16 text-[var(--color-text)]"><ShieldCheck className="h-4 w-4 text-[#0052F2]" /> Enable session replay</span>
         {showInstall ? <ChevronDown className="h-4 w-4 text-[var(--color-text-subtle)]" /> : <ChevronRight className="h-4 w-4 text-[var(--color-text-subtle)]" />}
       </button>
       {showInstall && (
         <div className="mt-4">
-          <div className="flex flex-wrap items-end gap-6 mb-4">
-            <div>
-              <span className="type-caption text-[var(--color-text-muted)] block mb-1.5">Sampling — record {samplePct}% of sessions</span>
-              <input type="range" min={1} max={100} value={samplePct} onChange={e => setSamplePct(Number(e.target.value))} className="w-56 accent-[#0052F2]" />
-            </div>
-            <label className="flex items-center gap-2 type-body-13 text-[var(--color-text-muted)] cursor-pointer pb-1">
-              <input type="checkbox" checked={mask} onChange={e => setMask(e.target.checked)} className="accent-[#0052F2] h-3.5 w-3.5" />
-              Mask all inputs (PII-safe)
-            </label>
-          </div>
+          <p className="type-body-13 text-[var(--color-text-subtle)] mb-3">
+            Session replay is built into the InspectUser SDK — there's no separate recorder to install. Just turn it on in your existing <code className="px-1 rounded bg-[var(--color-surface-2)]">init()</code> and recorded sessions appear below. rrweb is bundled (no third-party CDN) and all inputs are masked by default (PII-safe).
+          </p>
           <div className="rounded-lg overflow-hidden border border-[var(--color-border)]">
             <div className="flex items-center justify-between bg-[#1e1e2e] px-4 py-2 border-b border-white/5">
-              <span className="type-caption-12-400 text-[#94a3b8]">Paste before &lt;/body&gt; — loads async, never blocks your page</span>
+              <span className="type-caption-12-400 text-[#94a3b8]">Enable in your SDK init()</span>
               <button onClick={() => { navigator.clipboard.writeText(snippet); setCopied(true); setTimeout(() => setCopied(false), 1500) }} className="flex items-center gap-1.5 type-body-13 text-[#94a3b8] hover:text-white">
                 {copied ? <><Check className="h-3.5 w-3.5 text-green-400" /> Copied</> : <><Copy className="h-3.5 w-3.5" /> Copy</>}
               </button>
             </div>
             <pre className="bg-[#1e1e2e] text-[#e2e8f0] px-4 py-3 overflow-x-auto max-h-80"><code className="type-caption-12-400 leading-relaxed">{snippet}</code></pre>
           </div>
-          <p className="type-body-12-400 text-[var(--color-text-subtle)] mt-2">
-            Async + idle-loaded + {samplePct}% sampled + sendBeacon + throttled — the performance-safe pattern the real vendors use.
-          </p>
         </div>
       )}
     </Card>
