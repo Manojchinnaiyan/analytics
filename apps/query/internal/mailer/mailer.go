@@ -62,14 +62,14 @@ func extractAddr(from string) string {
 
 // InviteEmail renders the invite email body.
 func InviteEmail(orgName, inviterName, role, acceptURL string) (subject, html string) {
-	subject = fmt.Sprintf("You've been invited to %s on Klyra", orgName)
+	subject = fmt.Sprintf("You've been invited to %s on InspectUser", orgName)
 	by := ""
 	if inviterName != "" {
 		by = fmt.Sprintf(" by %s", inviterName)
 	}
 	html = fmt.Sprintf(`<!doctype html><html><body style="font-family:'IBM Plex Sans',Arial,sans-serif;background:#F4F5F6;padding:32px;">
   <div style="max-width:480px;margin:0 auto;background:#fff;border:1px solid #DEDFE2;border-radius:12px;padding:32px;">
-    <h1 style="font-size:20px;color:#18181B;margin:0 0 8px;">Join %s on Klyra</h1>
+    <h1 style="font-size:20px;color:#18181B;margin:0 0 8px;">Join %s on InspectUser</h1>
     <p style="font-size:15px;color:#6F7480;line-height:1.5;margin:0 0 24px;">
       You've been invited%s as a <strong>%s</strong>. Click below to set your password and get started.
     </p>

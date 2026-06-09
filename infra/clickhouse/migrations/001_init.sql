@@ -1,7 +1,7 @@
-CREATE DATABASE IF NOT EXISTS amplitude;
+CREATE DATABASE IF NOT EXISTS inspectuser;
 
 -- Events table (core analytics data)
-CREATE TABLE IF NOT EXISTS amplitude.events
+CREATE TABLE IF NOT EXISTS inspectuser.events
 (
     id              UUID DEFAULT generateUUIDv4(),
     project_id      String,
@@ -50,7 +50,7 @@ TTL toDateTime(event_time) + INTERVAL 2 YEAR
 SETTINGS index_granularity = 8192;
 
 -- User profiles table
-CREATE TABLE IF NOT EXISTS amplitude.user_profiles
+CREATE TABLE IF NOT EXISTS inspectuser.user_profiles
 (
     project_id      String,
     user_id         String,
@@ -64,7 +64,7 @@ ORDER BY (project_id, user_id)
 SETTINGS index_granularity = 8192;
 
 -- Sessions table
-CREATE TABLE IF NOT EXISTS amplitude.sessions
+CREATE TABLE IF NOT EXISTS inspectuser.sessions
 (
     project_id      String,
     user_id         String,
@@ -80,7 +80,7 @@ ORDER BY (project_id, user_id, session_id)
 SETTINGS index_granularity = 8192;
 
 -- Materialized view: daily event counts per project (speeds up segmentation)
-CREATE MATERIALIZED VIEW IF NOT EXISTS amplitude.mv_daily_event_counts
+CREATE MATERIALIZED VIEW IF NOT EXISTS inspectuser.mv_daily_event_counts
 ENGINE = SummingMergeTree()
 ORDER BY (project_id, event_type, date)
 AS
@@ -90,5 +90,5 @@ SELECT
     toDate(event_time) AS date,
     count()            AS event_count,
     uniq(user_id)      AS unique_users
-FROM amplitude.events
+FROM inspectuser.events
 GROUP BY project_id, event_type, date;

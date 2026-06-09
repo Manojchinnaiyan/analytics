@@ -1,5 +1,5 @@
 {
-  "name": "@amplitude-clone/browser",
+  "name": "@inspectuser/browser",
   "version": "0.1.0",
   "description": "Amplitude-compatible browser analytics SDK",
   "main": "./dist/index.js",

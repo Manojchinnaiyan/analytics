@@ -50,7 +50,7 @@ func (h *QueryHandler) Paths(c fiber.Ctx) error {
 		SELECT arrayMap(x -> x.2, arraySort(x -> x.1, groupArray((event_time, event_type)))) AS evs
 		FROM (
 			SELECT `+identityExpr+` AS id, event_time, event_type
-			FROM amplitude.events
+			FROM inspectuser.events
 			WHERE project_id = ? AND event_time BETWEEN ? AND ?
 		)
 		GROUP BY id

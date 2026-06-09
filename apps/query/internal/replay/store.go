@@ -58,7 +58,7 @@ func (s *chStore) Backend() string { return "clickhouse" }
 
 func (s *chStore) Put(ctx context.Context, projectID, sessionID, distinctID string, eventsJSON []byte, _ int) error {
 	return s.ch.Exec(ctx,
-		`INSERT INTO amplitude.session_replays (project_id, session_id, distinct_id, events) VALUES (?, ?, ?, ?)`,
+		`INSERT INTO inspectuser.session_replays (project_id, session_id, distinct_id, events) VALUES (?, ?, ?, ?)`,
 		projectID, sessionID, distinctID, string(eventsJSON))
 }
 
@@ -66,7 +66,7 @@ func (s *chStore) List(ctx context.Context, projectID string) ([]SessionMeta, er
 	rows, err := s.ch.Query(ctx, `
 		SELECT session_id, argMax(distinct_id, event_time) AS who,
 		       min(event_time) AS started, max(event_time) AS ended, count() AS chunks
-		FROM amplitude.session_replays WHERE project_id = ?
+		FROM inspectuser.session_replays WHERE project_id = ?
 		GROUP BY session_id ORDER BY started DESC LIMIT 200
 	`, projectID)
 	if err != nil {
@@ -78,7 +78,7 @@ func (s *chStore) List(ctx context.Context, projectID string) ([]SessionMeta, er
 
 func (s *chStore) Events(ctx context.Context, projectID, sessionID string) ([]json.RawMessage, error) {
 	rows, err := s.ch.Query(ctx, `
-		SELECT events FROM amplitude.session_replays
+		SELECT events FROM inspectuser.session_replays
 		WHERE project_id = ? AND session_id = ? ORDER BY event_time ASC
 	`, projectID, sessionID)
 	if err != nil {
@@ -98,12 +98,12 @@ func (s *chStore) Events(ctx context.Context, projectID, sessionID string) ([]js
 
 func (s *chStore) Delete(ctx context.Context, projectID, sessionID string) error {
 	return s.ch.Exec(ctx,
-		`ALTER TABLE amplitude.session_replays DELETE WHERE project_id = ? AND session_id = ?`, projectID, sessionID)
+		`ALTER TABLE inspectuser.session_replays DELETE WHERE project_id = ? AND session_id = ?`, projectID, sessionID)
 }
 
 func (s *chStore) Cleanup(ctx context.Context, before time.Time) error {
 	return s.ch.Exec(ctx,
-		`ALTER TABLE amplitude.session_replays DELETE WHERE event_time < ?`, before)
+		`ALTER TABLE inspectuser.session_replays DELETE WHERE event_time < ?`, before)
 }
 
 // ── R2 / S3 object store (production, opt-in) ───────────────────────────────
@@ -136,7 +136,7 @@ func newR2Store(ch clickhouse.Conn, endpoint, accessKey, secretKey, bucket strin
 
 	// Index table maps each chunk to its object key (the blob lives in R2).
 	_ = ch.Exec(context.Background(), `
-		CREATE TABLE IF NOT EXISTS amplitude.replay_index (
+		CREATE TABLE IF NOT EXISTS inspectuser.replay_index (
 			project_id  String,
 			session_id  String,
 			distinct_id String,
@@ -163,7 +163,7 @@ func (s *r2Store) Put(ctx context.Context, projectID, sessionID, distinctID stri
 		return err
 	}
 	return s.ch.Exec(ctx,
-		`INSERT INTO amplitude.replay_index (project_id, session_id, distinct_id, object_key, event_count) VALUES (?, ?, ?, ?, ?)`,
+		`INSERT INTO inspectuser.replay_index (project_id, session_id, distinct_id, object_key, event_count) VALUES (?, ?, ?, ?, ?)`,
 		projectID, sessionID, distinctID, key, uint32(count))
 }
 
@@ -171,7 +171,7 @@ func (s *r2Store) List(ctx context.Context, projectID string) ([]SessionMeta, er
 	rows, err := s.ch.Query(ctx, `
 		SELECT session_id, argMax(distinct_id, event_time) AS who,
 		       min(event_time) AS started, max(event_time) AS ended, count() AS chunks
-		FROM amplitude.replay_index WHERE project_id = ?
+		FROM inspectuser.replay_index WHERE project_id = ?
 		GROUP BY session_id ORDER BY started DESC LIMIT 200
 	`, projectID)
 	if err != nil {
@@ -183,7 +183,7 @@ func (s *r2Store) List(ctx context.Context, projectID string) ([]SessionMeta, er
 
 func (s *r2Store) Events(ctx context.Context, projectID, sessionID string) ([]json.RawMessage, error) {
 	rows, err := s.ch.Query(ctx, `
-		SELECT object_key FROM amplitude.replay_index
+		SELECT object_key FROM inspectuser.replay_index
 		WHERE project_id = ? AND session_id = ? ORDER BY event_time ASC
 	`, projectID, sessionID)
 	if err != nil {
@@ -220,7 +220,7 @@ func (s *r2Store) Events(ctx context.Context, projectID, sessionID string) ([]js
 
 func (s *r2Store) Delete(ctx context.Context, projectID, sessionID string) error {
 	rows, err := s.ch.Query(ctx,
-		`SELECT object_key FROM amplitude.replay_index WHERE project_id = ? AND session_id = ?`, projectID, sessionID)
+		`SELECT object_key FROM inspectuser.replay_index WHERE project_id = ? AND session_id = ?`, projectID, sessionID)
 	if err == nil {
 		defer rows.Close()
 		for rows.Next() {
@@ -231,12 +231,12 @@ func (s *r2Store) Delete(ctx context.Context, projectID, sessionID string) error
 		}
 	}
 	return s.ch.Exec(ctx,
-		`ALTER TABLE amplitude.replay_index DELETE WHERE project_id = ? AND session_id = ?`, projectID, sessionID)
+		`ALTER TABLE inspectuser.replay_index DELETE WHERE project_id = ? AND session_id = ?`, projectID, sessionID)
 }
 
 func (s *r2Store) Cleanup(ctx context.Context, before time.Time) error {
 	rows, err := s.ch.Query(ctx,
-		`SELECT object_key FROM amplitude.replay_index WHERE event_time < ?`, before)
+		`SELECT object_key FROM inspectuser.replay_index WHERE event_time < ?`, before)
 	if err != nil {
 		return err
 	}
@@ -247,7 +247,7 @@ func (s *r2Store) Cleanup(ctx context.Context, before time.Time) error {
 			_ = s.client.RemoveObject(ctx, s.bucket, k, minio.RemoveObjectOptions{})
 		}
 	}
-	return s.ch.Exec(ctx, `ALTER TABLE amplitude.replay_index DELETE WHERE event_time < ?`, before)
+	return s.ch.Exec(ctx, `ALTER TABLE inspectuser.replay_index DELETE WHERE event_time < ?`, before)
 }
 
 // ── shared helpers ──────────────────────────────────────────────────────────

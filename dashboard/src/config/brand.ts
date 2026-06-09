@@ -3,21 +3,21 @@
  *
  * Change the name/tagline here, or override at deploy time without touching code
  * via env vars:
- *   NEXT_PUBLIC_BRAND_NAME="Klyra"
+ *   NEXT_PUBLIC_BRAND_NAME="InspectUser"
  *   NEXT_PUBLIC_BRAND_TAGLINE="Clarity for every product decision."
- *   NEXT_PUBLIC_BRAND_SCOPE="@klyra"          # npm scope for SDK packages
+ *   NEXT_PUBLIC_BRAND_SCOPE="@inspectuser"          # npm scope for SDK packages
  *
  * Everything in the UI (sidebar, login, signup, onboarding, page title,
  * account menu) AND the SDK install snippets read from this config.
  */
-const name = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'Klyra'
+const name = process.env.NEXT_PUBLIC_BRAND_NAME ?? 'InspectUser'
 const slug = name.toLowerCase().replace(/[^a-z0-9]/g, '')
 
 export const brand = {
   /** Product name shown everywhere in the UI. */
   name,
 
-  /** Lowercase, URL/identifier-safe form. e.g. "klyra" */
+  /** Lowercase, URL/identifier-safe form. e.g. "inspectuser" */
   slug,
 
   /** Short tagline shown on auth screens. */
@@ -29,9 +29,9 @@ export const brand = {
 
   /** SDK naming — used in onboarding + settings install snippets. */
   sdk: {
-    /** JS object used in code, e.g. `Klyra.track(...)`. */
+    /** JS object used in code, e.g. `InspectUser.track(...)`. */
     object: name,
-    /** npm scope, e.g. "@klyra". */
+    /** npm scope, e.g. "@inspectuser". */
     scope: process.env.NEXT_PUBLIC_BRAND_SCOPE ?? `@${slug}`,
     /** Full package names. */
     get browserPkg() { return `${this.scope}/browser` },

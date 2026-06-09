@@ -45,7 +45,7 @@ func (h *TaxonomyHandler) List(c fiber.Ctx) error {
 
 	rows, err := h.ch.Query(ctx, `
 		SELECT event_type, toInt64(count()) AS cnt, max(event_time) AS last_seen
-		FROM amplitude.events WHERE project_id = ?
+		FROM inspectuser.events WHERE project_id = ?
 		GROUP BY event_type ORDER BY cnt DESC LIMIT 500
 	`, projectID)
 	if err != nil {

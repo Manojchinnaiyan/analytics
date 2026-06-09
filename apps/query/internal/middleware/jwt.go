@@ -3,7 +3,7 @@ package middleware
 import (
 	"strings"
 
-	"github.com/amplitude-clone/query/internal/auth"
+	"github.com/inspectuser/query/internal/auth"
 	"github.com/gofiber/fiber/v3"
 )
 

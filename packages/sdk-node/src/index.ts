@@ -77,11 +77,11 @@ export class NodeClient {
         body: JSON.stringify({ api_key: this.apiKey, events: batch }),
       })
       if (!res.ok) {
-        console.error(`[amplitude] flush failed: ${res.status}`)
+        console.error(`[inspectuser] flush failed: ${res.status}`)
         this.queue.unshift(...batch.slice(0, 500))
       }
     } catch (err) {
-      console.error('[amplitude] flush error:', err)
+      console.error('[inspectuser] flush error:', err)
       this.queue.unshift(...batch.slice(0, 500))
     }
   }

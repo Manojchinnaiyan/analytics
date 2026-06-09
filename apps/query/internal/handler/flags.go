@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/ClickHouse/clickhouse-go/v2"
-	"github.com/amplitude-clone/query/internal/stats"
+	"github.com/inspectuser/query/internal/stats"
 	"github.com/bytedance/sonic"
 	"github.com/gofiber/fiber/v3"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -243,7 +243,7 @@ func (h *FlagHandler) Results(c fiber.Ctx) error {
 	rows, err := h.ch.Query(ctx, `
 		SELECT id, argMin(v, t) FROM (
 			SELECT `+identityExpr+` AS id, JSONExtractString(properties,'variant') AS v, event_time AS t
-			FROM amplitude.events
+			FROM inspectuser.events
 			WHERE project_id = ? AND event_type = '$flag_exposure' AND JSONExtractString(properties,'flag') = ?
 		) GROUP BY id
 	`, projectID, flagKey)
@@ -261,7 +261,7 @@ func (h *FlagHandler) Results(c fiber.Ctx) error {
 	goalSet := map[string]bool{}
 	if goal != "" {
 		grows, gerr := h.ch.Query(ctx, `
-			SELECT DISTINCT `+identityExpr+` AS id FROM amplitude.events WHERE project_id = ? AND event_type = ?
+			SELECT DISTINCT `+identityExpr+` AS id FROM inspectuser.events WHERE project_id = ? AND event_type = ?
 		`, projectID, goal)
 		if gerr == nil {
 			defer grows.Close()
@@ -285,7 +285,7 @@ func (h *FlagHandler) Results(c fiber.Ctx) error {
 	}
 	guardSet := map[string]bool{}
 	if guardrail != "" {
-		if grows, gerr := h.ch.Query(ctx, `SELECT DISTINCT `+identityExpr+` AS id FROM amplitude.events WHERE project_id = ? AND event_type = ?`, projectID, guardrail); gerr == nil {
+		if grows, gerr := h.ch.Query(ctx, `SELECT DISTINCT `+identityExpr+` AS id FROM inspectuser.events WHERE project_id = ? AND event_type = ?`, projectID, guardrail); gerr == nil {
 			for grows.Next() {
 				var id string
 				if grows.Scan(&id) == nil {
@@ -340,11 +340,11 @@ func (h *FlagHandler) Results(c fiber.Ctx) error {
 		SELECT e.id AS id, toFloat64(count()) AS x
 		FROM (
 			SELECT `+identityExpr+` AS id, event_time AS t
-			FROM amplitude.events WHERE project_id = ?
+			FROM inspectuser.events WHERE project_id = ?
 		) e
 		INNER JOIN (
 			SELECT `+identityExpr+` AS id, min(event_time) AS first_exp
-			FROM amplitude.events
+			FROM inspectuser.events
 			WHERE project_id = ? AND event_type = '$flag_exposure' AND JSONExtractString(properties,'flag') = ?
 			GROUP BY id
 		) fx ON e.id = fx.id

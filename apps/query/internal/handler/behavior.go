@@ -40,7 +40,7 @@ func (h *ProductHandler) LiveEvents(c fiber.Ctx) error {
 	rows, err := h.ch.Query(ctx, `
 		SELECT toUnixTimestamp64Milli(event_time) AS ts_ms, event_type, user_id, device_id,
 		       platform, os_name, device_type, country, city, utm_source, properties
-		FROM amplitude.events
+		FROM inspectuser.events
 		WHERE `+conds+`
 		ORDER BY event_time DESC
 		LIMIT ?
@@ -86,7 +86,7 @@ func (h *ProductHandler) Lifecycle(c fiber.Ctx) error {
 		SELECT id, groupUniqArrayIf(d, d >= toDate(?)) AS act_days, min(d) AS first_seen
 		FROM (
 			SELECT `+identityExpr+` AS id, toDate(event_time) AS d
-			FROM amplitude.events WHERE project_id = ?
+			FROM inspectuser.events WHERE project_id = ?
 		)
 		GROUP BY id
 		HAVING max(d) >= toDate(?)
@@ -153,7 +153,7 @@ func (h *ProductHandler) Lifecycle(c fiber.Ctx) error {
 			uniqIf(id, ts >= now() - INTERVAL 30 DAY) AS mau
 		FROM (
 			SELECT `+identityExpr+` AS id, event_time AS ts, toDate(event_time) AS d
-			FROM amplitude.events WHERE project_id = ?
+			FROM inspectuser.events WHERE project_id = ?
 		)
 	`, projectID).Scan(&dau, &wau, &mau)
 

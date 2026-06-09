@@ -120,7 +120,7 @@ func (e *Exporter) exportBatch(ctx context.Context, c config) (int64, time.Time,
 		       properties, user_properties, country, region, city,
 		       platform, os_name, browser, device_type,
 		       utm_source, utm_medium, utm_campaign, referrer
-		FROM amplitude.events
+		FROM inspectuser.events
 		WHERE project_id = ? AND event_time > ? AND event_time <= ?
 		ORDER BY event_time
 		LIMIT 500000

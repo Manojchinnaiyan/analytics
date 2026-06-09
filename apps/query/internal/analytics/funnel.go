@@ -111,7 +111,7 @@ func Funnel(ctx context.Context, conn clickhouse.Conn, q FunnelQuery) (*FunnelRe
 	sql := fmt.Sprintf(`
 		WITH device_user AS (
 			SELECT device_id, argMax(user_id, event_time) AS uid
-			FROM amplitude.events
+			FROM inspectuser.events
 			WHERE project_id = ? AND user_id != '' AND device_id != ''
 			GROUP BY device_id
 		)
@@ -125,7 +125,7 @@ func Funnel(ctx context.Context, conn clickhouse.Conn, q FunnelQuery) (*FunnelRe
 				e.event_time AS e_time,
 				e.event_type AS e_type,
 				%s AS bd
-			FROM amplitude.events e
+			FROM inspectuser.events e
 			LEFT JOIN device_user du ON e.device_id = du.device_id
 			WHERE
 				e.project_id = ?

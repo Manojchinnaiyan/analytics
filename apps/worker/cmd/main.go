@@ -6,9 +6,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/amplitude-clone/worker/config"
-	"github.com/amplitude-clone/worker/internal/consumer"
-	"github.com/amplitude-clone/worker/internal/writer"
+	"github.com/inspectuser/worker/config"
+	"github.com/inspectuser/worker/internal/consumer"
+	"github.com/inspectuser/worker/internal/writer"
 	"go.uber.org/zap"
 )
 

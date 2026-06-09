@@ -38,7 +38,7 @@ func (h *ProductHandler) Revenue(c fiber.Ctx) error {
 			uniqIf(`+identityExpr+`, event_time >= today() - ?)                       AS payers,
 			sumIf(`+amt+`, event_time >= today() - ? AND event_time < today() - ?)    AS prev_rev,
 			uniqIf(`+identityExpr+`, event_time >= today() - ? AND event_time < today() - ?) AS prev_payers
-		FROM amplitude.events
+		FROM inspectuser.events
 		WHERE project_id = ? AND `+rev+`
 	`, win, win, win, int64(2*days-1), win, int64(2*days-1), win, projectID).
 		Scan(&totalRev, &purchases, &payers, &prevRev, &prevPayers)
@@ -46,7 +46,7 @@ func (h *ProductHandler) Revenue(c fiber.Ctx) error {
 	// Active users in range (denominator for ARPU + paid conversion).
 	var activeUsers uint64
 	_ = h.ch.QueryRow(ctx,
-		`SELECT uniq(`+identityExpr+`) FROM amplitude.events WHERE project_id = ? AND event_time >= today() - ?`,
+		`SELECT uniq(`+identityExpr+`) FROM inspectuser.events WHERE project_id = ? AND event_time >= today() - ?`,
 		projectID, win).Scan(&activeUsers)
 
 	div := func(a float64, b uint64) float64 {
@@ -91,7 +91,7 @@ func (h *ProductHandler) dominantCurrency(c fiber.Ctx, projectID string, win int
 	var cur string
 	_ = h.ch.QueryRow(c.Context(), `
 		SELECT JSONExtractString(properties, '$currency') AS cur
-		FROM amplitude.events
+		FROM inspectuser.events
 		WHERE project_id = ? AND event_type = 'Revenue' AND event_time >= today() - ?
 		GROUP BY cur ORDER BY count() DESC LIMIT 1
 	`, projectID, win).Scan(&cur)
@@ -108,7 +108,7 @@ func (h *ProductHandler) revenueTrend(c fiber.Ctx, projectID string, days int) [
 		SELECT toDate(event_time) AS d,
 		       sum(JSONExtractFloat(properties, '$revenue')) AS rev,
 		       count() AS purchases
-		FROM amplitude.events
+		FROM inspectuser.events
 		WHERE project_id = ? AND event_type = 'Revenue' AND event_time >= today() - ?
 		GROUP BY d ORDER BY d ASC
 	`, projectID, int64(days-1))
@@ -144,7 +144,7 @@ func (h *ProductHandler) revBreakdown(c fiber.Ctx, projectID string, win int64, 
 		SELECT JSONExtractString(properties, ?) AS v,
 		       sum(JSONExtractFloat(properties, '$revenue')) AS rev,
 		       count() AS purchases
-		FROM amplitude.events
+		FROM inspectuser.events
 		WHERE project_id = ? AND event_type = 'Revenue' AND event_time >= today() - ?
 		GROUP BY v ORDER BY rev DESC LIMIT 10
 	`, prop, projectID, win)

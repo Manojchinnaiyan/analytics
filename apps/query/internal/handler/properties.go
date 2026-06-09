@@ -28,7 +28,7 @@ func (h *QueryHandler) Properties(c fiber.Ctx) error {
 		rows, err := h.ch.Query(ctx, `
 			SELECT key, toInt64(count()) AS c FROM (
 				SELECT arrayJoin(JSONExtractKeys(`+column+`)) AS key
-				FROM amplitude.events
+				FROM inspectuser.events
 				WHERE project_id = ? AND event_time >= today() - 30
 			)
 			WHERE key != ''
@@ -85,12 +85,12 @@ func (h *QueryHandler) PropertyDetail(c fiber.Ctx) error {
 	var first, last time.Time
 	_ = h.ch.QueryRow(c.Context(), `
 		SELECT countIf(`+expr+` != ''), uniqIf(`+expr+`, `+expr+` != ''), min(event_time), max(event_time)
-		FROM amplitude.events WHERE project_id = ?
+		FROM inspectuser.events WHERE project_id = ?
 	`, projectID).Scan(&count, &distinct, &first, &last)
 
 	samples := []string{}
 	if srows, err := h.ch.Query(c.Context(), `
-		SELECT DISTINCT `+expr+` AS v FROM amplitude.events WHERE project_id = ? AND `+expr+` != '' LIMIT 8
+		SELECT DISTINCT `+expr+` AS v FROM inspectuser.events WHERE project_id = ? AND `+expr+` != '' LIMIT 8
 	`, projectID); err == nil {
 		defer srows.Close()
 		for srows.Next() {

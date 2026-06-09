@@ -42,7 +42,7 @@ func (h *ProductHandler) WebVitals(c fiber.Ctx) error {
 			quantileIf(0.75)(JSONExtractFloat(properties,'inp_ms'), JSONHas(properties,'inp_ms')) AS inp,
 			quantileIf(0.75)(JSONExtractFloat(properties,'load_ms'),JSONHas(properties,'load_ms'))AS load,
 			count() AS samples
-		FROM amplitude.events WHERE `+where, projectID).
+		FROM inspectuser.events WHERE `+where, projectID).
 		Scan(&lcp, &cls, &fcp, &inp, &load, &samples)
 
 	// Per-page p75 (top pages by sample volume).
@@ -54,7 +54,7 @@ func (h *ProductHandler) WebVitals(c fiber.Ctx) error {
 				quantileIf(0.75)(JSONExtractFloat(properties,'cls'),    JSONHas(properties,'cls'))    AS cls,
 				quantileIf(0.75)(JSONExtractFloat(properties,'fcp_ms'), JSONHas(properties,'fcp_ms')) AS fcp,
 				quantileIf(0.75)(JSONExtractFloat(properties,'inp_ms'), JSONHas(properties,'inp_ms')) AS inp
-			FROM amplitude.events WHERE `+where+`
+			FROM inspectuser.events WHERE `+where+`
 			GROUP BY path
 		) ORDER BY samples DESC LIMIT 12
 	`, projectID); err == nil {

@@ -1,5 +1,5 @@
 {
-  "name": "@amplitude-clone/node",
+  "name": "@inspectuser/node",
   "version": "0.1.0",
   "description": "Amplitude-compatible Node.js analytics SDK",
   "main": "./dist/index.js",

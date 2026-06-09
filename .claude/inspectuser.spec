@@ -1,5 +1,5 @@
 spec_version: "1.0"
-name: amplitude-clone
+name: inspectuser
 description: Self-hosted product analytics platform (Amplitude clone). Multi-tenant. Go + Next.js + TypeScript SDKs.
 
 services:
@@ -80,10 +80,10 @@ storage:
   - id: clickhouse
     port: 8123
     tables:
-      - amplitude.events          # main events table, MergeTree, partitioned by month
-      - amplitude.user_profiles   # ReplacingMergeTree
-      - amplitude.sessions        # ReplacingMergeTree
-      - amplitude.mv_daily_event_counts  # materialized view
+      - inspectuser.events          # main events table, MergeTree, partitioned by month
+      - inspectuser.user_profiles   # ReplacingMergeTree
+      - inspectuser.sessions        # ReplacingMergeTree
+      - inspectuser.mv_daily_event_counts  # materialized view
     key_columns: [project_id, event_type, event_time, user_id]
     schema_file: infra/clickhouse/migrations/001_init.sql
 

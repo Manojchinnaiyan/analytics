@@ -102,7 +102,7 @@ func cohortMemberSQL(projectID string, def cohortDefinition) string {
 	}
 	pid := sqlStrip(projectID)
 	base := fmt.Sprintf(`SELECT if(user_id != '', user_id, device_id) AS id
-		FROM amplitude.events
+		FROM inspectuser.events
 		WHERE project_id = '%s' AND event_time >= now() - INTERVAL %d DAY`, pid, def.Days)
 
 	switch def.Type {

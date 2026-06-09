@@ -1,19 +1,19 @@
-import { AmplitudeClient } from './client'
+import { InspectUserClient } from './client'
 import type { SDKConfig, EventOptions, IdentifyOperation, RevenueOptions } from './types'
 
 export type { SDKConfig, EventOptions, IdentifyOperation, RevenueOptions }
-export { AmplitudeClient }
+export { InspectUserClient }
 
-let _instance: AmplitudeClient | null = null
+let _instance: InspectUserClient | null = null
 
-export function init(config: SDKConfig): AmplitudeClient | null {
+export function init(config: SDKConfig): InspectUserClient | null {
   // SSR-safe: on the server (Next.js/Remix/etc.) there's no window/localStorage,
   // so do nothing. The exported helpers below are null-safe no-ops, and the app
   // can call init() again on the client without crashing the render.
   if (typeof window === 'undefined' || typeof document === 'undefined') {
     return null
   }
-  _instance = new AmplitudeClient(config)
+  _instance = new InspectUserClient(config)
   return _instance
 }
 

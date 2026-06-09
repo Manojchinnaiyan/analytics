@@ -189,7 +189,7 @@ function cssPath(el: HTMLElement): string {
   return parts.join(' > ')
 }
 
-export class AmplitudeClient {
+export class InspectUserClient {
   private config: Required<SDKConfig>
   private queue: Event[] = []
   private userId: string | undefined

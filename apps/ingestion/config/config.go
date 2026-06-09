@@ -15,7 +15,7 @@ func Load() *Config {
 	viper.SetDefault("KAFKA_BROKER", "localhost:9092")
 	viper.SetDefault("KAFKA_TOPIC", "events")
 	viper.SetDefault("REDIS_ADDR", "localhost:6379")
-	viper.SetDefault("POSTGRES_DSN", "postgres://amplitude:amplitude_secret@localhost:5432/amplitude?sslmode=disable")
+	viper.SetDefault("POSTGRES_DSN", "postgres://inspectuser:inspectuser_secret@localhost:5432/inspectuser?sslmode=disable")
 	viper.AutomaticEnv()
 
 	return &Config{

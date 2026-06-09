@@ -50,7 +50,7 @@ apps/query/internal/
 apps/worker/cmd/main.go             ← Consumer runner
 apps/worker/internal/
   consumer/kafka.go                 ← franz-go consumer, batch flush
-  writer/clickhouse.go              ← Batch INSERT to amplitude.events
+  writer/clickhouse.go              ← Batch INSERT to inspectuser.events
 
 dashboard/src/
   app/(auth)/login/page.tsx         ← Login page
@@ -86,12 +86,12 @@ cd infra && docker compose up -d --build
 cd infra && docker compose up -d --build query
 
 # View logs
-docker logs amplitude_query -f
-docker logs amplitude_ingestion -f
-docker logs amplitude_worker -f
+docker logs inspectuser_query -f
+docker logs inspectuser_ingestion -f
+docker logs inspectuser_worker -f
 
 # Run ClickHouse query
-curl "http://localhost:8123/?query=SELECT+count(*)+FROM+amplitude.events" \
+curl "http://localhost:8123/?query=SELECT+count(*)+FROM+inspectuser.events" \
   -u "amplitude:change_me_in_production"
 
 # Test signup

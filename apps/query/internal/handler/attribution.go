@@ -65,7 +65,7 @@ func (h *AttributionHandler) Attribution(c fiber.Ctx) error {
 			%[1]s(utm_campaign, event_time, %[2]s) AS t_campaign,
 			%[1]s(referrer, event_time, %[2]s)     AS t_referrer,
 			maxIf(toInt8(1), event_type = ?) AS converted
-		FROM amplitude.events
+		FROM inspectuser.events
 		WHERE project_id = ?
 		GROUP BY if(user_id != '', user_id, device_id)
 	`, agg, isTouch), conversion, projectID)
@@ -134,7 +134,7 @@ func (h *AttributionHandler) multiTouch(c fiber.Ctx, projectID, conversion, mode
 		       toInt64(toUnixTimestamp(event_time)) AS t,
 		       utm_source, utm_medium, utm_campaign, referrer,
 		       toUInt8(event_type = ?) AS is_conv
-		FROM amplitude.events
+		FROM inspectuser.events
 		WHERE project_id = ?
 		  AND (utm_source != '' OR utm_medium != '' OR referrer != '' OR event_type = ?)
 		ORDER BY id, t

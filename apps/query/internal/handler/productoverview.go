@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/ClickHouse/clickhouse-go/v2"
-	"github.com/amplitude-clone/query/internal/analytics"
+	"github.com/inspectuser/query/internal/analytics"
 	"github.com/gofiber/fiber/v3"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
@@ -87,7 +87,7 @@ func (h *ProductHandler) ProductOverview(c fiber.Ctx) error {
 			uniq(id)                                                             AS unique_users
 		FROM (
 			SELECT `+identityExpr+` AS id, event_time AS ts, toDate(event_time, '`+tz+`') AS d
-			FROM amplitude.events WHERE project_id = ?
+			FROM inspectuser.events WHERE project_id = ?
 		)
 	`, projectID).Scan(&dau, &dauToday, &wau, &mau, &dauPrev, &wauPrev, &mauPrev, &totalEvents, &lastEvent, &uniqueUsers)
 
@@ -101,7 +101,7 @@ func (h *ProductHandler) ProductOverview(c fiber.Ctx) error {
 			countIf(first_day >= `+lt+` - ? AND first_day < `+lt+` - ?)   AS nprev
 		FROM (
 			SELECT `+identityExpr+` AS id, toDate(min(event_time), '`+tz+`') AS first_day
-			FROM amplitude.events WHERE project_id = ? GROUP BY id
+			FROM inspectuser.events WHERE project_id = ? GROUP BY id
 		)
 	`, win, int64(2*days-1), win, projectID).Scan(&newInRange, &newToday, &newPrev)
 
@@ -110,7 +110,7 @@ func (h *ProductHandler) ProductOverview(c fiber.Ctx) error {
 	_ = h.ch.QueryRow(ctx, `
 		SELECT ifNull(avg(dur), 0) FROM (
 			SELECT dateDiff('second', min(event_time), max(event_time)) AS dur
-			FROM amplitude.events
+			FROM inspectuser.events
 			WHERE project_id = ? AND session_id != '' AND event_time >= today() - ?
 			GROUP BY session_id
 			HAVING dur >= 0
@@ -124,7 +124,7 @@ func (h *ProductHandler) ProductOverview(c fiber.Ctx) error {
 	var evTot, usrTot, sessTot uint64
 	_ = h.ch.QueryRow(ctx, `
 		SELECT count(), uniq(`+identityExpr+`), uniqIf(session_id, session_id != '')
-		FROM amplitude.events WHERE project_id = ? AND event_time >= today() - ?
+		FROM inspectuser.events WHERE project_id = ? AND event_time >= today() - ?
 	`, projectID, win).Scan(&evTot, &usrTot, &sessTot)
 	eventsPerUser, sessionsPerUser := 0.0, 0.0
 	if usrTot > 0 {
@@ -194,11 +194,11 @@ func (h *ProductHandler) trendSeries(ctx context.Context, projectID, tz string, 
 			SELECT ev.id AS id, ev.ed AS ed, fs.fd AS fd
 			FROM (
 				SELECT DISTINCT `+identityExpr+` AS id, toDate(event_time, '`+tz+`') AS ed
-				FROM amplitude.events WHERE project_id = ? AND event_time >= today() - ?
+				FROM inspectuser.events WHERE project_id = ? AND event_time >= today() - ?
 			) ev
 			INNER JOIN (
 				SELECT `+identityExpr+` AS id, toDate(min(event_time), '`+tz+`') AS fd
-				FROM amplitude.events WHERE project_id = ? GROUP BY id
+				FROM inspectuser.events WHERE project_id = ? GROUP BY id
 			) fs ON ev.id = fs.id
 		) ev
 		WHERE ev.ed >= day - 29 AND ev.ed <= day
@@ -268,12 +268,12 @@ func (h *ProductHandler) retentionSnapshot(ctx context.Context, projectID, tz st
 			FROM (
 				SELECT id, groupUniqArray(d) AS days_arr FROM (
 					SELECT `+identityExpr+` AS id, `+day+` AS d
-					FROM amplitude.events WHERE project_id = ? AND event_time >= now() - INTERVAL ? DAY
+					FROM inspectuser.events WHERE project_id = ? AND event_time >= now() - INTERVAL ? DAY
 				) GROUP BY id
 			) a
 			INNER JOIN (
 				SELECT `+identityExpr+` AS id, min(`+day+`) AS fd
-				FROM amplitude.events WHERE project_id = ?
+				FROM inspectuser.events WHERE project_id = ?
 				GROUP BY id HAVING fd >= `+lt+` - ?
 			) g USING (id)
 		)
@@ -295,7 +295,7 @@ func (h *ProductHandler) topEvents(ctx context.Context, projectID string, win in
 	out := []map[string]any{}
 	rows, err := h.ch.Query(ctx, `
 		SELECT event_type, toInt64(count()) AS c, toInt64(uniq(`+identityExpr+`)) AS u
-		FROM amplitude.events WHERE project_id = ? AND event_time >= today() - ?
+		FROM inspectuser.events WHERE project_id = ? AND event_time >= today() - ?
 		GROUP BY event_type ORDER BY c DESC LIMIT 8
 	`, projectID, win)
 	if err != nil {
@@ -368,7 +368,7 @@ func (h *ProductHandler) FeatureEngagement(c fiber.Ctx) error {
 	// Active users in window (adoption denominator), scoped to the segment.
 	var activeUsers uint64
 	_ = h.ch.QueryRow(ctx,
-		`SELECT uniq(`+identityExpr+`) FROM amplitude.events
+		`SELECT uniq(`+identityExpr+`) FROM inspectuser.events
 		 WHERE project_id = ? AND event_time >= today() - ?`+seg,
 		projectID, since).Scan(&activeUsers)
 
@@ -378,7 +378,7 @@ func (h *ProductHandler) FeatureEngagement(c fiber.Ctx) error {
 		       toInt64(uniq(`+identityExpr+`))                        AS users,
 		       toInt64(count())                                       AS events,
 		       toInt64(uniq((`+identityExpr+`, toDate(event_time))))  AS user_days
-		FROM amplitude.events
+		FROM inspectuser.events
 		WHERE project_id = ? AND event_time >= today() - ?`+seg+`
 		GROUP BY feat ORDER BY users DESC LIMIT 100`,
 		projectID, since)
@@ -442,7 +442,7 @@ func (h *ProductHandler) fillStickiness(ctx context.Context, projectID, seg, dim
 		SELECT `+dim+`                                                              AS feat,
 		       toInt64(uniq(`+identityExpr+`))                                      AS mau,
 		       toInt64(uniqIf(`+identityExpr+`, toDate(event_time) = today() - 1))  AS dau
-		FROM amplitude.events
+		FROM inspectuser.events
 		WHERE project_id = ? AND event_time >= today() - 29`+seg+`
 		GROUP BY feat`, projectID)
 	if err != nil {
@@ -470,7 +470,7 @@ func (h *ProductHandler) fillTrend(ctx context.Context, projectID, seg, dim stri
 	}
 	rows, err := h.ch.Query(ctx, `
 		SELECT `+dim+` AS feat, toDate(event_time) AS d, toInt64(uniq(`+identityExpr+`)) AS u
-		FROM amplitude.events
+		FROM inspectuser.events
 		WHERE project_id = ? AND event_time >= today() - ?`+seg+`
 		GROUP BY feat, d`, projectID, since)
 	if err != nil {
@@ -535,7 +535,7 @@ func (h *ProductHandler) breakdown(ctx context.Context, projectID, column string
 	out := []map[string]any{}
 	rows, err := h.ch.Query(ctx, `
 		SELECT `+column+` AS v, uniq(`+identityExpr+`) AS u
-		FROM amplitude.events
+		FROM inspectuser.events
 		WHERE project_id = ? AND event_time >= today() - ?
 		GROUP BY v ORDER BY u DESC LIMIT 10
 	`, projectID, win)

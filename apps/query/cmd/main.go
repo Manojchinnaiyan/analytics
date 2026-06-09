@@ -8,14 +8,14 @@ import (
 	"time"
 
 	"github.com/ClickHouse/clickhouse-go/v2"
-	"github.com/amplitude-clone/query/config"
-	"github.com/amplitude-clone/query/internal/alerts"
-	"github.com/amplitude-clone/query/internal/handler"
-	"github.com/amplitude-clone/query/internal/mailer"
-	"github.com/amplitude-clone/query/internal/middleware"
-	"github.com/amplitude-clone/query/internal/perms"
-	"github.com/amplitude-clone/query/internal/replay"
-	"github.com/amplitude-clone/query/internal/warehouse"
+	"github.com/inspectuser/query/config"
+	"github.com/inspectuser/query/internal/alerts"
+	"github.com/inspectuser/query/internal/handler"
+	"github.com/inspectuser/query/internal/mailer"
+	"github.com/inspectuser/query/internal/middleware"
+	"github.com/inspectuser/query/internal/perms"
+	"github.com/inspectuser/query/internal/replay"
+	"github.com/inspectuser/query/internal/warehouse"
 	"github.com/gofiber/fiber/v3"
 	fibercompress "github.com/gofiber/fiber/v3/middleware/compress"
 	"github.com/gofiber/fiber/v3/middleware/cors"
@@ -468,7 +468,7 @@ func main() {
 
 	// Session replay: ClickHouse store for rrweb recordings.
 	if err := chConn.Exec(context.Background(), `
-		CREATE TABLE IF NOT EXISTS amplitude.session_replays (
+		CREATE TABLE IF NOT EXISTS inspectuser.session_replays (
 			project_id  String,
 			session_id  String,
 			distinct_id String,

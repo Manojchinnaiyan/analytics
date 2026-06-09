@@ -25,7 +25,7 @@ sudo ufw allow 22 && sudo ufw allow 80 && sudo ufw allow 443 && sudo ufw enable
 
 ## 3. Get the code + configure
 ```bash
-git clone <your-repo> klyra && cd klyra/infra
+git clone <your-repo> inspectuser && cd inspectuser/infra
 cp .env.prod.example .env
 nano .env        # set domains, PUBLIC_* urls, and STRONG secrets
 # generate secrets: openssl rand -hex 32

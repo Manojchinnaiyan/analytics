@@ -3,7 +3,7 @@ package handler
 import (
 	"time"
 
-	"github.com/amplitude-clone/query/internal/analytics"
+	"github.com/inspectuser/query/internal/analytics"
 	"github.com/gofiber/fiber/v3"
 	"go.uber.org/zap"
 )

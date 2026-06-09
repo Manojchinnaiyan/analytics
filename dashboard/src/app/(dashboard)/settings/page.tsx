@@ -46,7 +46,7 @@ function TimezoneSection({ projectId }: { projectId: string }) {
   )
 }
 
-// SSO (OIDC) — org admins point Klyra at their identity provider.
+// SSO (OIDC) — org admins point InspectUser at their identity provider.
 function SSOSection() {
   const qc = useQueryClient()
   const can = usePermission()

@@ -6,7 +6,7 @@
 services:
   clickhouse:
     image: clickhouse/clickhouse-server:24.3
-    container_name: amplitude_clickhouse
+    container_name: inspectuser_clickhouse
     volumes:
       - clickhouse_data:/var/lib/clickhouse
       - ./clickhouse/config.xml:/etc/clickhouse-server/config.d/config.xml
@@ -26,7 +26,7 @@ services:
 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.7.0
-    container_name: amplitude_zookeeper
+    container_name: inspectuser_zookeeper
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
@@ -36,7 +36,7 @@ services:
 
   kafka:
     image: confluentinc/cp-kafka:7.7.0
-    container_name: amplitude_kafka
+    container_name: inspectuser_kafka
     depends_on: [zookeeper]
     environment:
       KAFKA_BROKER_ID: 1
@@ -58,7 +58,7 @@ services:
 
   postgres:
     image: postgres:16-alpine
-    container_name: amplitude_postgres
+    container_name: inspectuser_postgres
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -75,7 +75,7 @@ services:
 
   redis:
     image: redis:7.4-alpine
-    container_name: amplitude_redis
+    container_name: inspectuser_redis
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes
@@ -88,7 +88,7 @@ services:
 
   ingestion:
     build: { context: ../apps/ingestion, dockerfile: Dockerfile }
-    container_name: amplitude_ingestion
+    container_name: inspectuser_ingestion
     environment:
       PORT: "4000"
       KAFKA_BROKER: kafka:29092
@@ -103,7 +103,7 @@ services:
 
   worker:
     build: { context: ../apps/worker, dockerfile: Dockerfile }
-    container_name: amplitude_worker
+    container_name: inspectuser_worker
     environment:
       KAFKA_BROKER: kafka:29092
       KAFKA_TOPIC: ${KAFKA_TOPIC}
@@ -121,7 +121,7 @@ services:
 
   query:
     build: { context: ../apps/query, dockerfile: Dockerfile }
-    container_name: amplitude_query
+    container_name: inspectuser_query
     environment:
       PORT: "4001"
       CLICKHOUSE_ADDR: clickhouse:9000
@@ -136,12 +136,12 @@ services:
       R2_ENDPOINT: ${R2_ENDPOINT:-}
       R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
       R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
-      R2_BUCKET: ${R2_BUCKET:-klyra-replays}
+      R2_BUCKET: ${R2_BUCKET:-inspectuser-replays}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
-      SMTP_FROM: ${SMTP_FROM:-Klyra <no-reply@klyra.local>}
+      SMTP_FROM: ${SMTP_FROM:-InspectUser <no-reply@inspectuser.local>}
     depends_on:
       clickhouse: { condition: service_healthy }
       postgres: { condition: service_healthy }
@@ -156,10 +156,10 @@ services:
         # PUBLIC urls — baked into the browser bundle at build time.
         NEXT_PUBLIC_QUERY_API_URL: ${PUBLIC_API_URL}
         NEXT_PUBLIC_INGESTION_API_URL: ${PUBLIC_INGEST_URL}
-        NEXT_PUBLIC_BRAND_NAME: ${BRAND_NAME:-Klyra}
+        NEXT_PUBLIC_BRAND_NAME: ${BRAND_NAME:-InspectUser}
         NEXT_PUBLIC_BRAND_TAGLINE: ${BRAND_TAGLINE:-Clarity for every product decision.}
-        NEXT_PUBLIC_BRAND_SCOPE: ${BRAND_SCOPE:-@klyra}
-    container_name: amplitude_dashboard
+        NEXT_PUBLIC_BRAND_SCOPE: ${BRAND_SCOPE:-@inspectuser}
+    container_name: inspectuser_dashboard
     depends_on: [query, ingestion]
     restart: unless-stopped
 
@@ -167,7 +167,7 @@ services:
   # service. Routes the three public subdomains to the internal services.
   caddy:
     image: caddy:2-alpine
-    container_name: amplitude_caddy
+    container_name: inspectuser_caddy
     ports:
       - "80:80"
       - "443:443"

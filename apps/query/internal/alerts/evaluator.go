@@ -135,7 +135,7 @@ func (e *Evaluator) metricValue(ctx context.Context, r rule, offsetMin int) floa
 	}
 	// window_minutes/offset are ints from our own DB — safe to interpolate.
 	q := fmt.Sprintf(
-		`SELECT toFloat64(%s) FROM amplitude.events
+		`SELECT toFloat64(%s) FROM inspectuser.events
 		 WHERE project_id = ? AND event_type = ?
 		   AND event_time >= now() - INTERVAL %d MINUTE
 		   AND event_time <  now() - INTERVAL %d MINUTE`,

@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/amplitude-clone/ingestion/internal/kafka"
-	"github.com/amplitude-clone/ingestion/internal/validator"
+	"github.com/inspectuser/ingestion/internal/kafka"
+	"github.com/inspectuser/ingestion/internal/validator"
 	"github.com/bytedance/sonic"
 	"github.com/gofiber/fiber/v3"
 	"github.com/redis/go-redis/v9"

@@ -68,7 +68,7 @@ func (h *QueryHandler) Onboarding(c fiber.Ctx) error {
 				       event_type AS et,
 				       `+bdExpr+` AS bd,
 				       min(toInt64(toUnixTimestamp(event_time))) OVER (PARTITION BY `+identityExpr+`) AS signup
-				FROM amplitude.events
+				FROM inspectuser.events
 				WHERE project_id = ?
 			)
 			GROUP BY uid, signup

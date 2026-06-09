@@ -73,7 +73,7 @@ func (w *ClickHouseWriter) WriteBatch(ctx context.Context, rows []EventRow) erro
 	}
 
 	batch, err := w.conn.PrepareBatch(ctx, `
-		INSERT INTO amplitude.events (
+		INSERT INTO inspectuser.events (
 			project_id, user_id, device_id, session_id, event_type, event_time,
 			properties, user_properties, platform, os_name, os_version,
 			device_type, browser, browser_version, country, region, city,

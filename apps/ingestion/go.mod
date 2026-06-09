@@ -1,4 +1,4 @@
-module github.com/amplitude-clone/ingestion
+module github.com/inspectuser/ingestion
 
 go 1.26
 

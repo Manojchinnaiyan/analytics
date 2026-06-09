@@ -33,7 +33,7 @@ function timeAgo(iso: string): string {
 const QUERY_BASE = process.env.NEXT_PUBLIC_QUERY_API_URL ?? 'http://localhost:4001'
 
 function buildSnippet(apiKey: string, samplePct: number, mask: boolean): string {
-  return `<!-- Klyra session-replay recorder — async, sampled, privacy-safe -->
+  return `<!-- InspectUser session-replay recorder — async, sampled, privacy-safe -->
 <script>
 (function () {
   var SAMPLE = ${(samplePct / 100).toFixed(2)};                 // record ${samplePct}% of sessions

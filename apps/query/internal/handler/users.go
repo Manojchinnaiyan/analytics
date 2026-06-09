@@ -35,7 +35,7 @@ func (h *UserHandler) List(c fiber.Ctx) error {
 			max(event_time)     AS last_seen
 		FROM (
 			SELECT ` + identityExpr + ` AS id, toUInt8(user_id != '') AS has_uid, event_type, event_time
-			FROM amplitude.events
+			FROM inspectuser.events
 			WHERE project_id = ?
 		)
 		WHERE id != ''
@@ -94,7 +94,7 @@ func (h *UserHandler) Profile(c fiber.Ctx) error {
 			argMax(platform, event_time),
 			argMax(country, event_time),
 			max(toUInt8(user_id != ''))
-		FROM amplitude.events
+		FROM inspectuser.events
 		WHERE project_id = ? AND `+identityExpr+` = ?
 	`, projectID, userID).Scan(&events, &eventTypes, &firstSeen, &lastSeen, &userProps, &platform, &country, &isKnown)
 
@@ -106,7 +106,7 @@ func (h *UserHandler) Profile(c fiber.Ctx) error {
 	timeline := []map[string]any{}
 	rows, err := h.ch.Query(ctx, `
 		SELECT event_type, event_time, properties, platform
-		FROM amplitude.events
+		FROM inspectuser.events
 		WHERE project_id = ? AND `+identityExpr+` = ?
 		ORDER BY event_time DESC
 		LIMIT 100

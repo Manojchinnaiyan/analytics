@@ -7,8 +7,8 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/amplitude-clone/query/internal/auth"
-	"github.com/amplitude-clone/query/internal/perms"
+	"github.com/inspectuser/query/internal/auth"
+	"github.com/inspectuser/query/internal/perms"
 	"github.com/gofiber/fiber/v3"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"

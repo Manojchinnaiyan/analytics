@@ -53,7 +53,7 @@ func Retention(ctx context.Context, conn clickhouse.Conn, q RetentionQuery) ([]R
 		       toInt64(count(DISTINCT user_id))        AS cohort_size
 		FROM (
 			SELECT if(user_id != '', user_id, device_id) AS user_id, %[1]s AS cohort_day
-			FROM amplitude.events
+			FROM inspectuser.events
 			WHERE project_id = ? AND event_type = ? AND event_time BETWEEN ? AND ? %[2]s
 			GROUP BY user_id
 		)
@@ -92,13 +92,13 @@ func Retention(ctx context.Context, conn clickhouse.Conn, q RetentionQuery) ([]R
 			groupUniqArray(toInt64(dateDiff('%[3]s', c.cohort_day, a.active_day))) AS periods
 		FROM (
 			SELECT if(user_id != '', user_id, device_id) AS user_id, %[1]s AS cohort_day
-			FROM amplitude.events
+			FROM inspectuser.events
 			WHERE project_id = ? AND event_type = ? AND event_time BETWEEN ? AND ? %[2]s
 			GROUP BY user_id
 		) c
 		INNER JOIN (
 			SELECT DISTINCT if(user_id != '', user_id, device_id) AS user_id, %[4]s AS active_day
-			FROM amplitude.events
+			FROM inspectuser.events
 			WHERE project_id = ? AND event_type = ? AND event_time BETWEEN ? AND dateAdd(%[5]s, ?, ?)
 		) a ON c.user_id = a.user_id
 		WHERE a.active_day >= c.cohort_day

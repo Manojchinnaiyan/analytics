@@ -68,7 +68,7 @@ func (h *GDPRHandler) Export(c fiber.Ctx) error {
 		SELECT event_type, event_time, device_id, user_id, session_id,
 		       properties, user_properties, platform, os_name, device_type,
 		       browser, country, region, city, referrer, ip
-		FROM amplitude.events
+		FROM inspectuser.events
 		WHERE `+where+`
 		ORDER BY event_time
 		LIMIT 100000`, args...)
@@ -124,13 +124,13 @@ func (h *GDPRHandler) Delete(c fiber.Ctx) error {
 	// ClickHouse mutations run asynchronously in the background. The events
 	// table carries both user_id and device_id; user_profiles and sessions are
 	// keyed only by user_id, so they only apply when a user_id is supplied.
-	if err := h.ch.Exec(ctx, "ALTER TABLE amplitude.events DELETE WHERE "+where, args...); err != nil {
+	if err := h.ch.Exec(ctx, "ALTER TABLE inspectuser.events DELETE WHERE "+where, args...); err != nil {
 		h.log.Error("gdpr delete failed", zap.String("table", "events"), zap.Error(err))
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "delete failed on events"})
 	}
 	if r.UserID != "" {
 		for _, tbl := range []string{"user_profiles", "sessions"} {
-			if err := h.ch.Exec(ctx, "ALTER TABLE amplitude."+tbl+" DELETE WHERE project_id = ? AND user_id = ?", projectID, r.UserID); err != nil {
+			if err := h.ch.Exec(ctx, "ALTER TABLE inspectuser."+tbl+" DELETE WHERE project_id = ? AND user_id = ?", projectID, r.UserID); err != nil {
 				h.log.Error("gdpr delete failed", zap.String("table", tbl), zap.Error(err))
 				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "delete failed on " + tbl})
 			}
@@ -141,7 +141,7 @@ func (h *GDPRHandler) Delete(c fiber.Ctx) error {
 		if id == "" {
 			continue
 		}
-		_ = h.ch.Exec(ctx, `ALTER TABLE amplitude.session_replays DELETE WHERE project_id = ? AND distinct_id = ?`, projectID, id)
+		_ = h.ch.Exec(ctx, `ALTER TABLE inspectuser.session_replays DELETE WHERE project_id = ? AND distinct_id = ?`, projectID, id)
 	}
 
 	// Purge the Redis identity map entries that resolve to this subject so

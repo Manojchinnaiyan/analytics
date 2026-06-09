@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/amplitude-clone/query/internal/replay"
+	"github.com/inspectuser/query/internal/replay"
 	"github.com/bytedance/sonic"
 	"github.com/gofiber/fiber/v3"
 	"github.com/redis/go-redis/v9"

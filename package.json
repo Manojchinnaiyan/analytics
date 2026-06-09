@@ -1,13 +1,13 @@
 {
-  "name": "amplitude-clone",
+  "name": "inspectuser",
   "private": true,
   "workspaces": [
     "dashboard",
     "packages/*"
   ],
   "scripts": {
-    "dev:dashboard": "pnpm --filter @amplitude-clone/dashboard dev",
-    "build:sdk": "pnpm --filter @amplitude-clone/browser build",
+    "dev:dashboard": "pnpm --filter @inspectuser/dashboard dev",
+    "build:sdk": "pnpm --filter @inspectuser/browser build",
     "infra:up": "docker compose -f infra/docker-compose.yml up -d",
     "infra:down": "docker compose -f infra/docker-compose.yml down"
   },

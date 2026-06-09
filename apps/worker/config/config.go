@@ -17,10 +17,10 @@ type Config struct {
 func Load() *Config {
 	viper.SetDefault("KAFKA_BROKER", "localhost:9092")
 	viper.SetDefault("KAFKA_TOPIC", "events")
-	viper.SetDefault("KAFKA_GROUP_ID", "amplitude-worker")
+	viper.SetDefault("KAFKA_GROUP_ID", "inspectuser-worker")
 	viper.SetDefault("CLICKHOUSE_ADDR", "localhost:9000")
-	viper.SetDefault("CLICKHOUSE_DB", "amplitude")
-	viper.SetDefault("CLICKHOUSE_USER", "amplitude")
+	viper.SetDefault("CLICKHOUSE_DB", "inspectuser")
+	viper.SetDefault("CLICKHOUSE_USER", "inspectuser")
 	viper.SetDefault("CLICKHOUSE_PASSWORD", "change_me_in_production")
 	viper.SetDefault("BATCH_SIZE", 5000)
 	viper.SetDefault("FLUSH_INTERVAL_MS", 1000)

@@ -73,11 +73,11 @@ func (h *ProductHandler) WebAnalytics(c fiber.Ctx) error {
 
 	// 1) Headline counters (current + previous window for deltas).
 	var pageviews, sessions, visitors uint64
-	_ = h.ch.QueryRow(ctx, `SELECT count(), uniqIf(session_id, session_id != ''), uniq(`+identityExpr+`) FROM amplitude.events WHERE `+base, projectID).
+	_ = h.ch.QueryRow(ctx, `SELECT count(), uniqIf(session_id, session_id != ''), uniq(`+identityExpr+`) FROM inspectuser.events WHERE `+base, projectID).
 		Scan(&pageviews, &sessions, &visitors)
 
 	var pvPrev, sPrev, vPrev uint64
-	_ = h.ch.QueryRow(ctx, `SELECT count(), uniqIf(session_id, session_id != ''), uniq(`+identityExpr+`) FROM amplitude.events WHERE `+prevBase, projectID).
+	_ = h.ch.QueryRow(ctx, `SELECT count(), uniqIf(session_id, session_id != ''), uniq(`+identityExpr+`) FROM inspectuser.events WHERE `+prevBase, projectID).
 		Scan(&pvPrev, &sPrev, &vPrev)
 
 	// New vs returning: among the (filtered) visitors, how many are globally new
@@ -85,10 +85,10 @@ func (h *ProductHandler) WebAnalytics(c fiber.Ctx) error {
 	var newVisitors uint64
 	_ = h.ch.QueryRow(ctx, `
 		SELECT uniqIf(v.id, g.fs >= toDate('`+since+`'))
-		FROM (SELECT DISTINCT `+identityExpr+` AS id FROM amplitude.events WHERE `+base+`) v
+		FROM (SELECT DISTINCT `+identityExpr+` AS id FROM inspectuser.events WHERE `+base+`) v
 		INNER JOIN (
 			SELECT `+identityExpr+` AS id, min(toDate(event_time)) AS fs
-			FROM amplitude.events WHERE project_id = ? GROUP BY id
+			FROM inspectuser.events WHERE project_id = ? GROUP BY id
 		) g ON v.id = g.id
 	`, projectID, projectID).Scan(&newVisitors)
 	returningVisitors := uint64(0)
@@ -99,7 +99,7 @@ func (h *ProductHandler) WebAnalytics(c fiber.Ctx) error {
 	// Realtime: distinct visitors active in the last 5 minutes (scoped to filters).
 	var liveVisitors uint64
 	_ = h.ch.QueryRow(ctx,
-		`SELECT uniq(`+identityExpr+`) FROM amplitude.events
+		`SELECT uniq(`+identityExpr+`) FROM inspectuser.events
 		 WHERE project_id = ? AND event_time >= now() - INTERVAL 5 MINUTE`+flt,
 		projectID).Scan(&liveVisitors)
 
@@ -111,7 +111,7 @@ func (h *ProductHandler) WebAnalytics(c fiber.Ctx) error {
 		FROM (
 			SELECT session_id, count() AS pvs,
 			       dateDiff('second', min(event_time), max(event_time)) AS dur
-			FROM amplitude.events WHERE `+base+` AND session_id != ''
+			FROM inspectuser.events WHERE `+base+` AND session_id != ''
 			GROUP BY session_id
 		)
 	`, projectID).Scan(&bounced, &totalSessions, &pagesPerSession, &avgDuration)
@@ -126,7 +126,7 @@ func (h *ProductHandler) WebAnalytics(c fiber.Ctx) error {
 	_ = h.ch.QueryRow(ctx, `
 		SELECT ifNull(avg(sess_ms), 0) FROM (
 			SELECT session_id, sum(JSONExtractInt(properties,'engaged_ms')) AS sess_ms
-			FROM amplitude.events
+			FROM inspectuser.events
 			WHERE project_id = ? AND event_type = 'Page Engagement' AND session_id != ''
 			  AND event_time >= toDate('`+since+`')`+flt+`
 			GROUP BY session_id
@@ -137,7 +137,7 @@ func (h *ProductHandler) WebAnalytics(c fiber.Ctx) error {
 	byDate := map[string]map[string]any{}
 	if rows, err := h.ch.Query(ctx, `
 		SELECT toDate(event_time) AS d, count() AS pv, uniqIf(session_id, session_id != '') AS s, uniq(`+identityExpr+`) AS v
-		FROM amplitude.events WHERE `+base+`
+		FROM inspectuser.events WHERE `+base+`
 		GROUP BY d ORDER BY d ASC
 	`, projectID); err == nil {
 		defer rows.Close()
@@ -198,7 +198,7 @@ func (h *ProductHandler) webBreakdown(ctx context.Context, projectID, since, flt
 	out := []map[string]any{}
 	rows, err := h.ch.Query(ctx, `
 		SELECT `+column+` AS v, uniq(`+identityExpr+`) AS visitors
-		FROM amplitude.events
+		FROM inspectuser.events
 		WHERE project_id = ? AND event_type = 'Page Viewed' AND event_time >= toDate('`+since+`')`+flt+`
 		GROUP BY v ORDER BY visitors DESC LIMIT 8
 	`, projectID)
@@ -225,7 +225,7 @@ func (h *ProductHandler) topPages(ctx context.Context, projectID, since, flt str
 	rows, err := h.ch.Query(ctx, `
 		SELECT path, count() AS views, uniq(id) AS visitors FROM (
 			SELECT JSONExtractString(properties, 'path') AS path, `+identityExpr+` AS id
-			FROM amplitude.events
+			FROM inspectuser.events
 			WHERE project_id = ? AND event_type = 'Page Viewed' AND event_time >= toDate('`+since+`')`+flt+`
 		)
 		GROUP BY path ORDER BY views DESC LIMIT 12
@@ -253,7 +253,7 @@ func (h *ProductHandler) sessionEdgePages(ctx context.Context, projectID, since,
 	rows, err := h.ch.Query(ctx, `
 		SELECT path, count() AS sessions FROM (
 			SELECT session_id, `+agg+`(JSONExtractString(properties, 'path'), event_time) AS path
-			FROM amplitude.events
+			FROM inspectuser.events
 			WHERE project_id = ? AND event_type = 'Page Viewed' AND session_id != '' AND event_time >= toDate('`+since+`')`+flt+`
 			GROUP BY session_id
 		)
@@ -287,7 +287,7 @@ func (h *ProductHandler) topReferrers(ctx context.Context, projectID, since, flt
 				SELECT session_id,
 				       argMin(JSONExtractString(properties, 'referrer'), event_time) AS entry_ref,
 				       argMin(JSONExtractString(properties, 'domain'),   event_time) AS entry_dom
-				FROM amplitude.events
+				FROM inspectuser.events
 				WHERE project_id = ? AND event_type = 'Page Viewed' AND session_id != '' AND event_time >= toDate('`+since+`')`+flt+`
 				GROUP BY session_id
 			)

@@ -108,7 +108,7 @@ func Segmentation(ctx context.Context, conn clickhouse.Conn, q SegmentationQuery
 			formatDateTime(toStartOf%s(event_time), '%s') AS date,
 			%s AS value
 			%s
-		FROM amplitude.events
+		FROM inspectuser.events
 		WHERE
 			project_id = ?
 			AND event_type = ?

@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/ClickHouse/clickhouse-go/v2"
-	"github.com/amplitude-clone/query/internal/analytics"
+	"github.com/inspectuser/query/internal/analytics"
 	"github.com/bytedance/sonic"
 	"github.com/gofiber/fiber/v3"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -251,7 +251,7 @@ func (h *QueryHandler) FirstEvent(c fiber.Ctx) error {
 
 	rows, err := h.ch.Query(c.Context(), `
 		SELECT event_type, user_id, event_time
-		FROM amplitude.events
+		FROM inspectuser.events
 		WHERE project_id = ?
 		ORDER BY event_time ASC
 		LIMIT 1
@@ -282,7 +282,7 @@ func (h *QueryHandler) EventTypes(c fiber.Ctx) error {
 
 	rows, err := h.ch.Query(c.Context(), `
 		SELECT event_type, count() AS cnt
-		FROM amplitude.events
+		FROM inspectuser.events
 		WHERE project_id = ?
 		GROUP BY event_type
 		ORDER BY cnt DESC
@@ -321,7 +321,7 @@ func (h *QueryHandler) Usage(c fiber.Ctx) error {
 		SELECT toYYYYMM(event_time) AS m,
 		       count() AS events,
 		       uniqExact(if(user_id != '', user_id, device_id)) AS mtu
-		FROM amplitude.events
+		FROM inspectuser.events
 		WHERE project_id = ?
 		  AND event_time >= toStartOfMonth(now()) - INTERVAL 11 MONTH
 		GROUP BY m ORDER BY m`, projectID)
@@ -372,7 +372,7 @@ func (h *QueryHandler) Overview(c fiber.Ctx) error {
 			countIf(toDate(event_time) = today()),
 			countIf(event_time >= now() - INTERVAL 1 HOUR),
 			max(event_time)
-		FROM amplitude.events
+		FROM inspectuser.events
 		WHERE project_id = ?
 	`, projectID).Scan(&totalEvents, &uniqueUsers, &eventsToday, &eventsLastHour, &lastEventTime)
 
@@ -380,7 +380,7 @@ func (h *QueryHandler) Overview(c fiber.Ctx) error {
 	volume := []map[string]any{}
 	vrows, err := h.ch.Query(ctx, `
 		SELECT toDate(event_time) AS d, count() AS c
-		FROM amplitude.events
+		FROM inspectuser.events
 		WHERE project_id = ? AND event_time >= today() - 29
 		GROUP BY d ORDER BY d ASC
 	`, projectID)
@@ -399,7 +399,7 @@ func (h *QueryHandler) Overview(c fiber.Ctx) error {
 	topEvents := []map[string]any{}
 	trows, err := h.ch.Query(ctx, `
 		SELECT event_type, count() AS c, uniq(user_id) AS u
-		FROM amplitude.events
+		FROM inspectuser.events
 		WHERE project_id = ?
 		GROUP BY event_type ORDER BY c DESC LIMIT 8
 	`, projectID)
@@ -418,7 +418,7 @@ func (h *QueryHandler) Overview(c fiber.Ctx) error {
 	recent := []map[string]any{}
 	rrows, err := h.ch.Query(ctx, `
 		SELECT event_type, user_id, event_time
-		FROM amplitude.events
+		FROM inspectuser.events
 		WHERE project_id = ?
 		ORDER BY event_time DESC LIMIT 12
 	`, projectID)

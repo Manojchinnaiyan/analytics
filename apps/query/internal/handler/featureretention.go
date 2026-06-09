@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"strconv"
 
-	"github.com/amplitude-clone/query/internal/analytics"
+	"github.com/inspectuser/query/internal/analytics"
 	"github.com/gofiber/fiber/v3"
 )
 
@@ -52,12 +52,12 @@ func (h *ProductHandler) FeatureRetention(c fiber.Ctx) error {
 			       max(e.d > f.fd) AS returned
 			FROM (
 				SELECT `+identityExpr+` AS uid, toDate(event_time) AS d, event_type AS et
-				FROM amplitude.events
+				FROM inspectuser.events
 				WHERE project_id = ? AND event_time >= today() - ?`+seg+`
 			) e
 			INNER JOIN (
 				SELECT `+identityExpr+` AS uid, min(toDate(event_time)) AS fd
-				FROM amplitude.events
+				FROM inspectuser.events
 				WHERE project_id = ?`+seg+`
 				GROUP BY uid
 				HAVING fd >= today() - ?

@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/amplitude-clone/query/internal/analytics"
+	"github.com/inspectuser/query/internal/analytics"
 	"github.com/gofiber/fiber/v3"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"

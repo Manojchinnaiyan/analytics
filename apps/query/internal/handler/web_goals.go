@@ -28,7 +28,7 @@ func (h *ProductHandler) WebGoals(c fiber.Ctx) error {
 
 	// Denominator: distinct filtered visitors in the window.
 	var visitors uint64
-	_ = h.ch.QueryRow(ctx, `SELECT uniq(`+identityExpr+`) FROM amplitude.events WHERE `+base, projectID).Scan(&visitors)
+	_ = h.ch.QueryRow(ctx, `SELECT uniq(`+identityExpr+`) FROM inspectuser.events WHERE `+base, projectID).Scan(&visitors)
 
 	pctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -56,10 +56,10 @@ func (h *ProductHandler) WebGoals(c fiber.Ctx) error {
 		var conv uint64
 		_ = h.ch.QueryRow(ctx, `
 			SELECT uniq(gg.id) FROM
-				(SELECT DISTINCT `+identityExpr+` AS id FROM amplitude.events
+				(SELECT DISTINCT `+identityExpr+` AS id FROM inspectuser.events
 				 WHERE project_id = ? AND `+cond+` AND event_time >= toDate('`+since+`')) gg
 			INNER JOIN
-				(SELECT DISTINCT `+identityExpr+` AS id FROM amplitude.events WHERE `+base+`) v
+				(SELECT DISTINCT `+identityExpr+` AS id FROM inspectuser.events WHERE `+base+`) v
 			ON gg.id = v.id
 		`, projectID, projectID).Scan(&conv)
 		rate := 0.0

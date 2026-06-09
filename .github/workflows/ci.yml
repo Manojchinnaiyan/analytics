@@ -109,6 +109,6 @@ jobs:
         with:
           context: ${{ matrix.context }}
           push: false
-          tags: amplitude-clone/${{ matrix.service }}:${{ github.sha }}
+          tags: inspectuser/${{ matrix.service }}:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

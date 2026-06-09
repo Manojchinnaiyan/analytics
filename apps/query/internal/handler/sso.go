@@ -14,7 +14,7 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/oauth2"
 
-	"github.com/amplitude-clone/query/internal/auth"
+	"github.com/inspectuser/query/internal/auth"
 )
 
 // SSOHandler implements per-org OIDC single sign-on (Authorization Code flow):

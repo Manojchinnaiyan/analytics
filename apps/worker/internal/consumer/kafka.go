@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/amplitude-clone/worker/internal/writer"
+	"github.com/inspectuser/worker/internal/writer"
 	"github.com/bytedance/sonic"
 	"github.com/twmb/franz-go/pkg/kgo"
 	"go.uber.org/zap"

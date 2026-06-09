@@ -11,14 +11,14 @@ import { Card } from '@/components/ui/Card'
 interface SavedQuery { id: string; name: string; query: string }
 
 const DEFAULT_QUERY = `SELECT event_type, count() AS events, uniq(if(user_id != '', user_id, device_id)) AS users
-FROM amplitude.events
+FROM inspectuser.events
 WHERE project_id = '{{project_id}}'
 GROUP BY event_type
 ORDER BY events DESC
 LIMIT 20`
 
 const SCHEMA = [
-  'amplitude.events — project_id, user_id, device_id, session_id, event_type, event_time,',
+  'inspectuser.events — project_id, user_id, device_id, session_id, event_type, event_time,',
   '   properties, user_properties, platform, os_name, device_type, browser, country, region, city,',
   '   utm_source, utm_medium, utm_campaign, referrer',
 ]

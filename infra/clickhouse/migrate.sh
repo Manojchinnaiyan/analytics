@@ -3,9 +3,9 @@ set -euo pipefail
 
 CLICKHOUSE_HOST="${CLICKHOUSE_HOST:-localhost}"
 CLICKHOUSE_PORT="${CLICKHOUSE_PORT:-8123}"
-CLICKHOUSE_USER="${CLICKHOUSE_USER:-amplitude}"
+CLICKHOUSE_USER="${CLICKHOUSE_USER:-inspectuser}"
 CLICKHOUSE_PASSWORD="${CLICKHOUSE_PASSWORD:-change_me_in_production}"
-CLICKHOUSE_DB="${CLICKHOUSE_DB:-amplitude}"
+CLICKHOUSE_DB="${CLICKHOUSE_DB:-inspectuser}"
 
 MIGRATIONS_DIR="$(dirname "$0")/migrations"
 

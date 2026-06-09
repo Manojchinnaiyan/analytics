@@ -1,4 +1,4 @@
-module github.com/amplitude-clone/worker
+module github.com/inspectuser/worker
 
 go 1.26
 

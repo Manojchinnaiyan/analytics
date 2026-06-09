@@ -1,4 +1,4 @@
-module github.com/amplitude-clone/query
+module github.com/inspectuser/query
 
 go 1.26
 

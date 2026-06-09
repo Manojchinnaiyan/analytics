@@ -8,7 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.uber.org/zap"
 
-	"github.com/amplitude-clone/query/internal/warehouse"
+	"github.com/inspectuser/query/internal/warehouse"
 )
 
 type WarehouseHandler struct {
