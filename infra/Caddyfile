@@ -13,3 +13,10 @@
 {$INGEST_DOMAIN} {
 	reverse_proxy ingestion:4000
 }
+
+# Branded short-link domain: go.<domain>/<slug> → ingestion's redirect handler
+# (records the click, then 302s to the destination). Needs a DNS A-record for
+# this host → server IP so Caddy can issue its cert.
+{$SHORTLINK_DOMAIN:go.inspectuser.com} {
+	reverse_proxy ingestion:4000
+}

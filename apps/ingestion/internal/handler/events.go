@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/inspectuser/ingestion/internal/geo"
 	"github.com/inspectuser/ingestion/internal/kafka"
 	"github.com/inspectuser/ingestion/internal/validator"
 	"github.com/gofiber/fiber/v3"
@@ -15,11 +16,12 @@ import (
 type EventHandler struct {
 	producer *kafka.Producer
 	rdb      *redis.Client
+	geo      *geo.Resolver
 	log      *zap.Logger
 }
 
-func NewEventHandler(producer *kafka.Producer, rdb *redis.Client, log *zap.Logger) *EventHandler {
-	return &EventHandler{producer: producer, rdb: rdb, log: log}
+func NewEventHandler(producer *kafka.Producer, rdb *redis.Client, geoR *geo.Resolver, log *zap.Logger) *EventHandler {
+	return &EventHandler{producer: producer, rdb: rdb, geo: geoR, log: log}
 }
 
 // botUA matches common crawler / headless / monitor user agents.
@@ -178,6 +180,13 @@ func (h *EventHandler) BatchIngest(c fiber.Ctx) error {
 			}
 		}
 		e.IP = c.IP()
+		// Server-side IP geolocation (authoritative, like Amplitude/PostHog) —
+		// overrides the SDK's browser-locale/timezone guess when the DB resolves it.
+		if h.geo.Enabled() {
+			if country, region, city := h.geo.Lookup(e.IP); country != "" {
+				e.Country, e.Region, e.City = country, region, city
+			}
+		}
 		if id := e.UserID; id != "" {
 			identities[id] = struct{}{}
 		} else if e.DeviceID != "" {

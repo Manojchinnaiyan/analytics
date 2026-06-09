@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/inspectuser/ingestion/config"
+	"github.com/inspectuser/ingestion/internal/geo"
 	"github.com/inspectuser/ingestion/internal/handler"
 	kafkapkg "github.com/inspectuser/ingestion/internal/kafka"
 	"github.com/inspectuser/ingestion/internal/middleware"
@@ -38,6 +39,9 @@ func main() {
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		BodyLimit:    10 * 1024 * 1024,
+		// We sit behind Caddy, which sets X-Forwarded-For — so c.IP() returns the
+		// real visitor IP (needed for accurate GeoIP), not Caddy's internal IP.
+		ProxyHeader: fiber.HeaderXForwardedFor,
 	})
 
 	app.Use(recover.New())
@@ -52,7 +56,17 @@ func main() {
 	}))
 
 	auth := middleware.NewAuth(rdb)
-	eventHandler := handler.NewEventHandler(producer, rdb, log)
+
+	geoResolver, gerr := geo.New(cfg.GeoIPDBPath)
+	if gerr != nil {
+		log.Warn("geoip db failed to load; geo enrichment disabled", zap.String("path", cfg.GeoIPDBPath), zap.Error(gerr))
+		geoResolver, _ = geo.New("")
+	} else if geoResolver.Enabled() {
+		log.Info("geoip enrichment enabled", zap.String("db", cfg.GeoIPDBPath))
+	}
+	defer geoResolver.Close()
+
+	eventHandler := handler.NewEventHandler(producer, rdb, geoResolver, log)
 	redirectHandler := handler.NewRedirectHandler(rdb, log)
 	flagEvalHandler := handler.NewFlagEvalHandler(rdb, producer, log)
 

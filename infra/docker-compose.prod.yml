@@ -95,6 +95,10 @@ services:
       KAFKA_TOPIC: ${KAFKA_TOPIC}
       REDIS_ADDR: redis:6379
       POSTGRES_DSN: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
+      GEOIP_DB_PATH: /data/geoip.mmdb
+    volumes:
+      # Server-local GeoIP DB (DB-IP City Lite .mmdb); see infra/geoip/. Read-only.
+      - ./geoip/dbip-city.mmdb:/data/geoip.mmdb:ro
     depends_on:
       kafka: { condition: service_healthy }
       redis: { condition: service_healthy }

@@ -36,3 +36,6 @@ packages/*/dist/
 
 # selective-deploy cursor (server-local)
 infra/.last_deploy_sha
+
+# GeoIP database (server-local, downloaded per-deploy, ~130MB)
+infra/geoip/

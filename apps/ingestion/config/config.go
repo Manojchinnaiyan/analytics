@@ -3,11 +3,12 @@ package config
 import "github.com/spf13/viper"
 
 type Config struct {
-	Port       string
+	Port        string
 	KafkaBroker string
 	KafkaTopic  string
 	RedisAddr   string
 	PostgresDSN string
+	GeoIPDBPath string // path to a MaxMind/DB-IP .mmdb; empty = geo enrichment off
 }
 
 func Load() *Config {
@@ -16,6 +17,7 @@ func Load() *Config {
 	viper.SetDefault("KAFKA_TOPIC", "events")
 	viper.SetDefault("REDIS_ADDR", "localhost:6379")
 	viper.SetDefault("POSTGRES_DSN", "postgres://inspectuser:inspectuser_secret@localhost:5432/inspectuser?sslmode=disable")
+	viper.SetDefault("GEOIP_DB_PATH", "")
 	viper.AutomaticEnv()
 
 	return &Config{
@@ -24,5 +26,6 @@ func Load() *Config {
 		KafkaTopic:  viper.GetString("KAFKA_TOPIC"),
 		RedisAddr:   viper.GetString("REDIS_ADDR"),
 		PostgresDSN: viper.GetString("POSTGRES_DSN"),
+		GeoIPDBPath: viper.GetString("GEOIP_DB_PATH"),
 	}
 }
