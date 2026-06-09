@@ -11,7 +11,7 @@ import { Select } from '@/components/ui/Select'
 import { SocialIcon } from '@/components/SocialIcon'
 
 // Clean short-link domain for sharing; ingest base is where the SDK posts events.
-const SHORT_BASE = process.env.NEXT_PUBLIC_SHORTLINK_URL || 'https://inspectuser.com'
+const SHORT_BASE = process.env.NEXT_PUBLIC_SHORTLINK_URL || 'https://go.inspectuser.com'
 const INGEST_BASE = process.env.NEXT_PUBLIC_INGEST_PUBLIC_URL || 'https://ingest.inspectuser.com'
 const DEMO_BASE = process.env.NEXT_PUBLIC_DEMO_PUBLIC_URL || 'https://demo.inspectuser.com'
 

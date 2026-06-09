@@ -1,30 +1,30 @@
-# Behind a Cloudflare Tunnel: TLS terminates at Cloudflare's edge and cloudflared
-# reaches Caddy over the internal Docker network — so Caddy serves plain HTTP only
-# (no certs, no public ports). Each block = one hostname → internal service.
-{
-	auto_https off
-}
+# Auto-HTTPS reverse proxy. Each block = one public subdomain → internal service.
+# Caddy fetches & renews Let's Encrypt certs automatically (needs ports 80/443
+# open and the domains' DNS A-records pointing at this server's IP).
 
-http://{$APP_DOMAIN} {
+{$APP_DOMAIN} {
 	reverse_proxy dashboard:3000
 }
 
-http://{$API_DOMAIN} {
+{$API_DOMAIN} {
 	reverse_proxy query:4001
 }
 
-http://{$INGEST_DOMAIN} {
+{$INGEST_DOMAIN} {
 	reverse_proxy ingestion:4000
 }
 
-# Branded short-link domain: go.<domain>/<slug> → ingestion's redirect handler.
-http://{$SHORTLINK_DOMAIN:go.inspectuser.com} {
+# Branded short-link domain: go.<domain>/<slug> → ingestion's redirect handler
+# (records the click, then 302s to the destination). Needs a DNS A-record for
+# this host → server IP so Caddy can issue its cert.
+{$SHORTLINK_DOMAIN:go.inspectuser.com} {
 	reverse_proxy ingestion:4000
 }
 
-# Apex + www also resolve short links: inspectuser.com/<slug>. Bare root bounces
-# to the app (no marketing site yet); everything else → redirect handler.
-http://inspectuser.com, http://www.inspectuser.com {
+# Apex + www also resolve short links: inspectuser.com/<slug> and
+# www.inspectuser.com/<slug>. The bare root bounces to the app (the domain has
+# no marketing site yet). Needs apex + www DNS pointing at this server.
+inspectuser.com, www.inspectuser.com {
 	@root path /
 	redir @root https://app.inspectuser.com 302
 	reverse_proxy ingestion:4000
