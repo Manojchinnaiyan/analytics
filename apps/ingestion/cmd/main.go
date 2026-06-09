@@ -41,7 +41,11 @@ func main() {
 		BodyLimit:    10 * 1024 * 1024,
 		// We sit behind Caddy, which sets X-Forwarded-For — so c.IP() returns the
 		// real visitor IP (needed for accurate GeoIP), not Caddy's internal IP.
-		ProxyHeader: fiber.HeaderXForwardedFor,
+		// Fiber v3 only honours ProxyHeader when the peer is a trusted proxy;
+		// Caddy is on the private Docker network, so trust private + loopback.
+		ProxyHeader:      fiber.HeaderXForwardedFor,
+		TrustProxy:       true,
+		TrustProxyConfig: fiber.TrustProxyConfig{Private: true, Loopback: true},
 	})
 
 	app.Use(recover.New())
