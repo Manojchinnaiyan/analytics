@@ -29,7 +29,7 @@ const SHOWCASE = [
     points: ['Source-attributed revenue', 'AOV · ARPU · ARPPU · LTV', 'Stripe & Shopify-ready'] },
 ]
 
-// Named-competitor comparison. 1 = yes, 0.5 = partial, 0 = no.
+// Named-competitor comparison. 1 = yes, 2 = soon, 0.5 = partial, 0 = no.
 const RIVALS = [
   { name: 'InspectUser', us: true },
   { name: 'Amplitude', domain: 'amplitude.com' },
@@ -46,8 +46,8 @@ const MATRIX: [string, number, number, number, number, number][] = [
   ['Identify users · visitor-level', 1, 1, 1, 1, 0],
   ['GDPR & privacy controls', 1, 1, 0.5, 1, 1],
   ['Smart links on your domain', 1, 0, 0, 0, 0],
-  ['Chat with your data', 0, 1, 0, 1, 0],
-  ['Public dashboards', 0.5, 1, 0.5, 1, 1],
+  ['Chat with your data', 2, 1, 0, 1, 0],
+  ['Public dashboards', 1, 1, 0.5, 1, 1],
   ['Starts at', -1, -1, -1, -1, -1], // price row, rendered specially
 ]
 const PRICES = ['$9/mo', '$49+/mo', '$25+/mo', '$0–pay-as-you-go', '$9/mo']
@@ -237,6 +237,7 @@ export default function HomePage() {
                           : vals.map((v, i) => (
                             <td key={label + i} className={`px-3 py-3 text-center ${i === 0 ? 'bg-[var(--color-brand-soft)]' : ''}`}>
                               {v === 1 ? <Check className="inline h-5 w-5 text-[#16A34A]" />
+                                : v === 2 ? <span className="inline-block text-[10px] font-semibold text-[var(--color-brand)] bg-[var(--color-brand-soft)] px-2 py-0.5 rounded-full">Soon</span>
                                 : v === 0.5 ? <span className="text-[#F59E0B] text-[16px] font-bold leading-none" title="Partial / add-on">~</span>
                                 : <span className="text-[var(--color-text-subtle)]">—</span>}
                             </td>
@@ -247,7 +248,7 @@ export default function HomePage() {
                 </tbody>
               </table>
             </div>
-            <p className="text-center text-[12px] text-[var(--color-text-subtle)] mt-3">✓ included · ~ partial or paid add-on · — not offered. Competitor capabilities as of 2026; logos belong to their owners.</p>
+            <p className="text-center text-[12px] text-[var(--color-text-subtle)] mt-3">✓ included · Soon = on the roadmap · ~ partial or paid add-on · — not offered. Competitor capabilities as of 2026; logos belong to their owners.</p>
           </Reveal>
         </div>
       </section>

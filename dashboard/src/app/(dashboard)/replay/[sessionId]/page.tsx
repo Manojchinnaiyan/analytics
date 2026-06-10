@@ -3,26 +3,36 @@
 import { use, useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Play, Pause, RotateCcw } from 'lucide-react'
 import { api } from '@/lib/api'
 import { useProjectStore } from '@/stores/project'
 import { Card } from '@/components/ui/Card'
 
-const PLAYER_JS = 'https://cdn.jsdelivr.net/npm/rrweb-player@2.0.0-alpha.11/dist/index.js'
-const PLAYER_CSS = 'https://cdn.jsdelivr.net/npm/rrweb-player@2.0.0-alpha.11/dist/style.css'
+// IMPORTANT: the player must match the rrweb version the SDK *records* with
+// (packages/sdk-browser → rrweb 2.0.0-alpha.4). Playing alpha.4 recordings with a
+// newer rrweb-player blanks the DOM (only the cursor renders). We use the matching
+// rrweb Replayer so the recorded page actually reconstructs.
+const RRWEB_JS = 'https://cdn.jsdelivr.net/npm/rrweb@2.0.0-alpha.4/dist/rrweb.min.js'
+const RRWEB_CSS = 'https://cdn.jsdelivr.net/npm/rrweb@2.0.0-alpha.4/dist/rrweb.min.css'
+
+type Replayer = {
+  play: (timeOffset?: number) => void
+  pause: () => void
+  getCurrentTime?: () => number
+}
 
 let loaderPromise: Promise<void> | null = null
-function loadPlayer(): Promise<void> {
+function loadRrweb(): Promise<void> {
   if (loaderPromise) return loaderPromise
   loaderPromise = new Promise((resolve, reject) => {
-    if (!document.querySelector(`link[href="${PLAYER_CSS}"]`)) {
+    if (!document.querySelector(`link[href="${RRWEB_CSS}"]`)) {
       const link = document.createElement('link')
-      link.rel = 'stylesheet'; link.href = PLAYER_CSS
+      link.rel = 'stylesheet'; link.href = RRWEB_CSS
       document.head.appendChild(link)
     }
-    if ((window as unknown as { rrwebPlayer?: unknown }).rrwebPlayer) return resolve()
+    if ((window as unknown as { rrweb?: { Replayer?: unknown } }).rrweb?.Replayer) return resolve()
     const s = document.createElement('script')
-    s.src = PLAYER_JS
+    s.src = RRWEB_JS
     s.onload = () => resolve()
     s.onerror = () => reject(new Error('failed'))
     document.body.appendChild(s)
@@ -30,12 +40,26 @@ function loadPlayer(): Promise<void> {
   return loaderPromise
 }
 
+// Scale the recorded viewport down to fit our container width.
+function fit(target: HTMLElement) {
+  const wrapper = target.querySelector('.replayer-wrapper') as HTMLElement | null
+  if (!wrapper) return
+  const recW = parseFloat(wrapper.style.width) || wrapper.offsetWidth || 1280
+  const recH = parseFloat(wrapper.style.height) || wrapper.offsetHeight || 800
+  const scale = Math.min(1, (target.clientWidth || recW) / recW)
+  wrapper.style.transform = `scale(${scale})`
+  wrapper.style.transformOrigin = 'top left'
+  target.style.height = `${Math.round(recH * scale)}px`
+}
+
 export default function ReplayPlayerPage({ params }: { params: Promise<{ sessionId: string }> }) {
   const { sessionId } = use(params)
   const decoded = decodeURIComponent(sessionId)
   const projectId = useProjectStore(s => s.projectId)
   const ref = useRef<HTMLDivElement>(null)
+  const replayerRef = useRef<Replayer | null>(null)
   const [err, setErr] = useState('')
+  const [playing, setPlaying] = useState(true)
 
   const { data, isLoading } = useQuery({
     queryKey: ['replay', projectId, decoded],
@@ -48,18 +72,34 @@ export default function ReplayPlayerPage({ params }: { params: Promise<{ session
     if (!events || !ref.current) return
     if (events.length < 2) { setErr('This recording is too short to play.'); return }
     const target = ref.current
-    loadPlayer().then(() => {
+    loadRrweb().then(() => {
       target.innerHTML = ''
-      const w = Math.min(target.clientWidth || 960, 1200)
-      const PlayerCtor = (window as unknown as { rrwebPlayer: new (o: unknown) => unknown }).rrwebPlayer
       try {
-        new PlayerCtor({ target, props: { events, width: w, height: Math.round(w * 0.6), autoPlay: true } })
+        const rrweb = (window as unknown as { rrweb: { Replayer: new (e: unknown[], o: unknown) => Replayer } }).rrweb
+        const replayer = new rrweb.Replayer(events, { root: target, mouseTail: true, skipInactive: true })
+        replayerRef.current = replayer
+        replayer.play()
+        setPlaying(true)
+        requestAnimationFrame(() => fit(target))
+        setTimeout(() => fit(target), 400)
       } catch {
         setErr('Could not initialise the player for this recording.')
       }
     }).catch(() => setErr('Failed to load the replay player.'))
-    return () => { target.innerHTML = '' }
+    return () => { try { replayerRef.current?.pause() } catch { /* noop */ }; target.innerHTML = ''; replayerRef.current = null }
   }, [events])
+
+  function toggle() {
+    const r = replayerRef.current
+    if (!r) return
+    if (playing) { r.pause(); setPlaying(false) }
+    else { r.play(r.getCurrentTime?.() ?? 0); setPlaying(true) }
+  }
+  function restart() {
+    const r = replayerRef.current
+    if (!r) return
+    r.play(0); setPlaying(true)
+  }
 
   return (
     <div className="space-y-4">
@@ -74,7 +114,18 @@ export default function ReplayPlayerPage({ params }: { params: Promise<{ session
         ) : err ? (
           <div className="h-96 flex items-center justify-center type-body-15 text-[var(--color-text-subtle)]">{err}</div>
         ) : (
-          <div ref={ref} className="rr-player-wrap min-h-[400px] flex justify-center" />
+          <>
+            <div className="flex items-center gap-2 mb-3">
+              <button onClick={toggle} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#0052F2] text-white type-caption hover:bg-[#0043c4] transition-colors">
+                {playing ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+                {playing ? 'Pause' : 'Play'}
+              </button>
+              <button onClick={restart} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[var(--color-border)] text-[var(--color-text)] type-caption hover:bg-[var(--color-surface-muted)] transition-colors">
+                <RotateCcw className="h-3.5 w-3.5" /> Restart
+              </button>
+            </div>
+            <div ref={ref} className="rr-player-wrap w-full overflow-hidden bg-white rounded-lg border border-[var(--color-border)] min-h-[400px]" />
+          </>
         )}
       </Card>
     </div>
