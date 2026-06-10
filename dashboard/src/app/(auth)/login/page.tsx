@@ -2,9 +2,13 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { ArrowRight } from 'lucide-react'
 import { authApi, saveToken } from '@/lib/auth'
 import { useProjectStore } from '@/stores/project'
-import { brand } from '@/config/brand'
+import { AuthShell } from '@/components/marketing/AuthShell'
+
+const inputCls =
+  'w-full border border-[var(--color-border)] rounded-xl px-3.5 py-2.5 text-[15px] text-[var(--color-text)] placeholder:text-[var(--color-text-subtle)] focus:outline-none focus:border-[var(--color-brand)] focus:ring-4 focus:ring-[var(--color-brand-soft)] transition-all'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -31,12 +35,8 @@ export default function LoginPage() {
       const res = await authApi.login(email, password)
       saveToken(res.token)
       setProject({
-        projectId:   res.project_id ?? '',
-        apiKey:      res.api_key ?? '',
-        orgId:       res.org_id,
-        userName:    res.name ?? '',
-        email:       res.email ?? email,
-        projectName: res.project_name ?? '',
+        projectId: res.project_id ?? '', apiKey: res.api_key ?? '', orgId: res.org_id,
+        userName: res.name ?? '', email: res.email ?? email, projectName: res.project_name ?? '',
       })
       router.push('/overview')
     } catch {
@@ -47,82 +47,40 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#f8fafc]">
-      <div className="w-full max-w-sm">
-        <div className="text-center mb-8">
-          <span className="type-h3-16 text-[#0052F2]">{brand.name}</span>
-          <p className="type-body-13 text-[#64748b] mt-1">Sign in to your account</p>
-        </div>
+    <AuthShell>
+      <h1 className="text-[26px] font-semibold tracking-tight text-[var(--color-text)]">Welcome back</h1>
+      <p className="mt-1.5 text-[15px] text-[var(--color-text-muted)]">Sign in to your dashboard.</p>
 
-        <div className="bg-white rounded-lg border border-[#e2e8f0] shadow-sm p-8">
-          {ssoMode ? (
-            <form onSubmit={startSSO} className="space-y-5">
-              <div>
-                <label htmlFor="org" className="type-caption text-[#0f172a] block mb-1.5">Organization</label>
-                <input
-                  id="org"
-                  required
-                  value={orgSlug}
-                  onChange={e => setOrgSlug(e.target.value)}
-                  className="w-full border border-[#e2e8f0] rounded-xl px-3.5 py-2.5 type-body-15 text-[#0f172a] placeholder:text-[#94a3b8] focus:outline-none focus:border-transparent transition-all"
-                  placeholder="your-org-slug"
-                />
-              </div>
-              <button type="submit" className="w-full py-2.5 bg-[#0052F2] text-white rounded-xl type-small-body hover:bg-[#0C3FA7] transition-colors">
-                Continue with SSO
-              </button>
-              <button type="button" onClick={() => setSsoMode(false)} className="w-full type-body-13 text-[#64748b] hover:text-[#0052F2]">
-                ← Back to password sign-in
-              </button>
-            </form>
-          ) : (
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label htmlFor="email" className="type-caption text-[#0f172a] block mb-1.5">Email</label>
-              <input
-                id="email"
-                type="email"
-                required
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                className="w-full border border-[#e2e8f0] rounded-xl px-3.5 py-2.5 type-body-15 text-[#0f172a] placeholder:text-[#94a3b8] focus:outline-none focus:border-transparent transition-all"
-                placeholder="you@company.com"
-              />
-            </div>
-            <div>
-              <label htmlFor="password" className="type-caption text-[#0f172a] block mb-1.5">Password</label>
-              <input
-                id="password"
-                type="password"
-                required
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                className="w-full border border-[#e2e8f0] rounded-xl px-3.5 py-2.5 type-body-15 text-[#0f172a] placeholder:text-[#94a3b8] focus:outline-none focus:border-transparent transition-all"
-                placeholder="••••••••"
-              />
-            </div>
+      {ssoMode ? (
+        <form onSubmit={startSSO} className="mt-8 space-y-5">
+          <div>
+            <label htmlFor="org" className="text-[13px] font-medium text-[var(--color-text)] block mb-1.5">Organization</label>
+            <input id="org" required value={orgSlug} onChange={e => setOrgSlug(e.target.value)} className={inputCls} placeholder="your-org-slug" />
+          </div>
+          <button type="submit" className="w-full py-2.5 bg-[var(--color-brand)] text-white rounded-xl text-[15px] font-medium hover:bg-[var(--color-brand-hover)] transition-colors">Continue with SSO</button>
+          <button type="button" onClick={() => setSsoMode(false)} className="w-full text-[14px] text-[var(--color-text-muted)] hover:text-[var(--color-brand)]">← Back to password sign-in</button>
+        </form>
+      ) : (
+        <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+          <div>
+            <label htmlFor="email" className="text-[13px] font-medium text-[var(--color-text)] block mb-1.5">Email</label>
+            <input id="email" type="email" required value={email} onChange={e => setEmail(e.target.value)} className={inputCls} placeholder="you@company.com" />
+          </div>
+          <div>
+            <label htmlFor="password" className="text-[13px] font-medium text-[var(--color-text)] block mb-1.5">Password</label>
+            <input id="password" type="password" required value={password} onChange={e => setPassword(e.target.value)} className={inputCls} placeholder="••••••••" />
+          </div>
+          {error && <p className="text-[14px] text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
+          <button type="submit" disabled={loading} className="group w-full py-2.5 bg-[var(--color-brand)] text-white rounded-xl text-[15px] font-medium hover:bg-[var(--color-brand-hover)] disabled:opacity-50 transition-colors inline-flex items-center justify-center gap-2">
+            {loading ? 'Signing in…' : <>Sign in <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" /></>}
+          </button>
+          <button type="button" onClick={() => setSsoMode(true)} className="w-full text-[14px] text-[var(--color-text-muted)] hover:text-[var(--color-brand)]">Sign in with SSO</button>
+        </form>
+      )}
 
-            {error && <p className="type-body-13 text-red-500 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-2.5 bg-[#0052F2] text-white rounded-xl type-small-body hover:bg-[#0C3FA7] disabled:opacity-50 transition-colors"
-            >
-              {loading ? 'Signing in…' : 'Sign in'}
-            </button>
-            <button type="button" onClick={() => setSsoMode(true)} className="w-full type-body-13 text-[#64748b] hover:text-[#0052F2]">
-              Sign in with SSO
-            </button>
-          </form>
-          )}
-        </div>
-
-        <p className="text-center type-body-13 text-[#64748b] mt-5">
-          No account?{' '}
-          <a href="/signup" className="type-link text-[#0052F2] hover:text-blue-700">Sign up</a>
-        </p>
-      </div>
-    </div>
+      <p className="mt-7 text-center text-[14px] text-[var(--color-text-muted)]">
+        No account? <a href="/signup" className="font-medium text-[var(--color-brand)] hover:text-[var(--color-brand-hover)]">Start free</a>
+      </p>
+    </AuthShell>
   )
 }

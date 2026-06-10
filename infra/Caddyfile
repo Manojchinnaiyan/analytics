@@ -22,10 +22,9 @@ http://{$SHORTLINK_DOMAIN:go.inspectuser.com} {
 	reverse_proxy ingestion:4000
 }
 
-# Apex + www also resolve short links: inspectuser.com/<slug>. Bare root bounces
-# to the app (no marketing site yet); everything else → redirect handler.
+# Apex + www serve the marketing site + app (the dashboard container also renders
+# the public landing page at /). Short links moved to <customer-domain>/?il=<code>,
+# so the apex no longer needs the redirect handler.
 http://inspectuser.com, http://www.inspectuser.com {
-	@root path /
-	redir @root https://app.inspectuser.com 302
-	reverse_proxy ingestion:4000
+	reverse_proxy dashboard:3000
 }
