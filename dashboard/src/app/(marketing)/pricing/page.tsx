@@ -3,44 +3,51 @@ import { Check, ArrowRight } from 'lucide-react'
 import { Reveal } from '@/components/marketing/Reveal'
 import { PageHero } from '@/components/marketing/PageHero'
 
-export const metadata: Metadata = { title: 'Pricing', description: 'Self-host free, or let us run it. Simple flat pricing, no surprise usage bills.' }
+export const metadata: Metadata = { title: 'Pricing', description: 'Priced simply by events. Start free, scale as you grow — no per-seat fees, no surprise overage bills.' }
 
 const PLANS = [
-  { name: 'Self-hosted', price: 'Free', sub: 'Run it on your own server', cta: 'Get started', highlight: false, feats: ['Unlimited events', 'All features', 'Session replay', 'Your infrastructure', 'Community support'] },
-  { name: 'Cloud', price: '$49', sub: 'per month, flat', cta: 'Start free trial', highlight: true, feats: ['Fully managed', 'Session replay included', 'Revenue attribution', 'Smart links', 'Email support'] },
-  { name: 'Scale', price: 'Custom', sub: 'For high-volume teams', cta: 'Talk to us', highlight: false, feats: ['SSO & roles', 'Warehouse export', 'SLA & priority support', 'Dedicated onboarding', 'Audit logs'] },
+  { name: 'Free', price: '$0', per: '', sub: '10k events / month', cta: 'Start free', highlight: false,
+    feats: ['Core analytics & funnels', 'Real-time + Web Vitals', '1 project', 'Community support'] },
+  { name: 'Starter', price: '$9', per: '/mo', sub: '100k events / month', cta: 'Start free', highlight: true,
+    feats: ['Everything in Free', 'Session replay', 'Revenue attribution', 'Smart links', 'Email support'] },
+  { name: 'Growth', price: '$29', per: '/mo', sub: '1M events / month', cta: 'Start free', highlight: false,
+    feats: ['Everything in Starter', 'Unlimited projects', 'Team roles & invites', 'Priority support'] },
+  { name: 'Scale', price: 'Custom', per: '', sub: '10M+ events / month', cta: 'Talk to us', highlight: false,
+    feats: ['Everything in Growth', 'SSO & RBAC', 'Warehouse export', 'SLA · audit logs · onboarding'] },
 ]
 const FAQ = [
-  ['Is it really free self-hosted?', 'Yes. Run the full platform on your own server with every feature and no event caps. You only pay if you want us to host and manage it for you.'],
-  ['Do you bill per event?', 'No surprise usage bills. Cloud is a flat monthly price; self-hosted is free regardless of volume.'],
-  ['Can I move my data out?', 'Always. It is your data — export to your warehouse anytime, or just keep it on your own infrastructure.'],
-  ['Is session replay included?', 'Yes, on every plan — it is built into the SDK, not a separate add-on.'],
+  ['How does event-based pricing work?', 'You pay for the volume of events you send each month — not per seat. Start free at 10k events; upgrade only as you grow.'],
+  ['What counts as an event?', 'Any tracked action: a pageview, click, custom event or a revenue event. Session-replay snapshots don’t count toward your event total.'],
+  ['What if I go over my limit?', 'We never drop your data. We’ll let you know you’re close and you can upgrade — no surprise overage charges.'],
+  ['Is session replay included?', 'Yes, from the Starter plan and up — it’s built into the SDK, not a separate add-on.'],
+  ['Can I export my data?', 'Always. Export to your warehouse anytime; it’s your data.'],
 ]
 
 export default function PricingPage() {
   return (
     <>
-      <PageHero eyebrow="Pricing" title="Simple, honest pricing" subtitle="Self-host free, or let us run it. No surprise usage bills." />
+      <PageHero eyebrow="Pricing" title="Priced by events. Nothing hidden." subtitle="Start free, scale as you grow. No per-seat fees, no surprise overage bills." />
       <section className="pb-20 bg-white">
-        <div className="mx-auto max-w-5xl px-5 grid md:grid-cols-3 gap-5 items-center">
+        <div className="mx-auto max-w-6xl px-5 grid sm:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
           {PLANS.map((p, i) => (
-            <Reveal key={p.name} delay={i * 90}>
-              <div className={`relative h-full rounded-2xl p-7 border ${p.highlight ? 'border-[var(--color-brand)] bg-white shadow-[0_30px_70px_-26px_rgba(0,82,242,.4)] md:scale-105' : 'border-[var(--color-border)] bg-white'}`}>
-                {p.highlight && <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full iu-aurora text-white text-[12px] font-semibold">Most popular</span>}
+            <Reveal key={p.name} delay={i * 80}>
+              <div className={`relative h-full rounded-2xl p-6 border ${p.highlight ? 'border-[var(--color-brand)] bg-white shadow-[0_30px_70px_-26px_rgba(0,82,242,.4)]' : 'border-[var(--color-border)] bg-white'}`}>
+                {p.highlight && <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full iu-aurora text-white text-[12px] font-semibold whitespace-nowrap">Most popular</span>}
                 <div className="text-[14px] font-medium text-[var(--color-text-muted)]">{p.name}</div>
                 <div className="mt-2 flex items-baseline gap-1">
-                  <span className="text-[40px] font-semibold text-[var(--color-text)]">{p.price}</span>
-                  {p.price !== 'Custom' && p.price !== 'Free' && <span className="text-[14px] text-[var(--color-text-subtle)]">/mo</span>}
+                  <span className="text-[34px] font-semibold text-[var(--color-text)]">{p.price}</span>
+                  {p.per && <span className="text-[14px] text-[var(--color-text-subtle)]">{p.per}</span>}
                 </div>
                 <div className="text-[13px] text-[var(--color-text-subtle)]">{p.sub}</div>
-                <a href="/signup" className={`mt-5 block text-center px-4 py-2.5 rounded-xl text-[15px] font-medium transition-colors ${p.highlight ? 'bg-[var(--color-brand)] text-white hover:bg-[var(--color-brand-hover)]' : 'border border-[var(--color-border)] text-[var(--color-text)] hover:border-[var(--color-brand)]'}`}>{p.cta}</a>
-                <ul className="mt-6 space-y-2.5">
-                  {p.feats.map((f) => <li key={f} className="flex items-center gap-2 text-[14px] text-[var(--color-text)]"><Check className="h-4 w-4 text-[#16A34A]" /> {f}</li>)}
+                <a href="/signup" className={`mt-5 block text-center px-4 py-2.5 rounded-xl text-[14px] font-medium transition-colors ${p.highlight ? 'bg-[var(--color-brand)] text-white hover:bg-[var(--color-brand-hover)]' : 'border border-[var(--color-border)] text-[var(--color-text)] hover:border-[var(--color-brand)]'}`}>{p.cta}</a>
+                <ul className="mt-5 space-y-2">
+                  {p.feats.map((f) => <li key={f} className="flex items-start gap-2 text-[13px] text-[var(--color-text)]"><Check className="h-4 w-4 text-[#16A34A] mt-0.5 flex-shrink-0" /> {f}</li>)}
                 </ul>
               </div>
             </Reveal>
           ))}
         </div>
+        <p className="text-center text-[13px] text-[var(--color-text-subtle)] mt-6">All plans include unlimited team members on paid tiers and full data export.</p>
       </section>
       <section className="pb-24 bg-white">
         <div className="mx-auto max-w-3xl px-5">

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { ssrStorage } from '@/lib/ssrStorage'
 
 interface UIState {
   /** User's manual preference: keep the sidebar expanded (pinned). */
@@ -19,6 +20,6 @@ export const useUIStore = create<UIState>()(
       toggleGroup: (heading) =>
         set(s => ({ collapsedGroups: { ...s.collapsedGroups, [heading]: !s.collapsedGroups[heading] } })),
     }),
-    { name: 'amp-ui' }
+    { name: 'amp-ui', storage: ssrStorage }
   )
 )

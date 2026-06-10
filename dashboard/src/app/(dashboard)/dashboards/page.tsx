@@ -1,8 +1,9 @@
 'use client'
 
 import Link from 'next/link'
+import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Trash2, LayoutDashboard, Pencil } from 'lucide-react'
+import { Trash2, LayoutDashboard, Pencil, Share2, Globe2, Copy, Check, Lock } from 'lucide-react'
 import { api } from '@/lib/api'
 import { useProjectStore } from '@/stores/project'
 import { PageHeader } from '@/components/ui/PageHeader'
@@ -56,6 +57,63 @@ function ChartTile({ chart, onDelete }: { chart: SavedChart; onDelete: () => voi
   )
 }
 
+function ShareDashboard({ projectId }: { projectId: string }) {
+  const [open, setOpen] = useState(false)
+  const [token, setToken] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [copied, setCopied] = useState(false)
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  const url = token ? `${origin}/public/${token}` : ''
+
+  useEffect(() => {
+    if (!projectId) return
+    api.getDashboardShare(projectId).then(r => setToken(r.token)).catch(() => {})
+  }, [projectId])
+
+  async function enable() {
+    setLoading(true)
+    try { const r = await api.enableDashboardShare(projectId); setToken(r.token) } finally { setLoading(false) }
+  }
+  async function disable() {
+    setLoading(true)
+    try { await api.disableDashboardShare(projectId); setToken(null) } finally { setLoading(false) }
+  }
+
+  return (
+    <div className="relative">
+      <button onClick={() => setOpen(v => !v)} className="btn-brand px-4 py-2 type-caption rounded-md flex items-center gap-1.5">
+        <Share2 className="h-4 w-4" /> Share{token ? ' · live' : ''}
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-full mt-2 w-80 rounded-xl border border-[var(--color-border)] bg-white shadow-[0_24px_60px_-18px_rgba(16,24,40,.28)] p-4 z-20">
+            <div className="flex items-center gap-2 mb-1"><Globe2 className="h-4 w-4 text-[#0052F2]" /><span className="type-small-body text-[var(--color-text)]">Public dashboard</span></div>
+            <p className="type-body-12-400 text-[var(--color-text-subtle)] mb-3">Anyone with the link can view these charts — read-only, no login.</p>
+            {token ? (
+              <>
+                <div className="flex items-center gap-1.5 mb-2">
+                  <input readOnly value={url} onFocus={e => e.currentTarget.select()} className="flex-1 ctrl text-[12px]" />
+                  <button onClick={() => { navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 1500) }} title="Copy" className="p-2 rounded-md border border-[var(--color-border)] hover:bg-[var(--color-surface-muted)]">
+                    {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4 text-[var(--color-text-muted)]" />}
+                  </button>
+                </div>
+                <button onClick={disable} disabled={loading} className="w-full type-body-13 text-[#DE0202] hover:bg-red-50 rounded-md py-1.5 flex items-center justify-center gap-1.5 disabled:opacity-50">
+                  <Lock className="h-3.5 w-3.5" /> Make private
+                </button>
+              </>
+            ) : (
+              <button onClick={enable} disabled={loading} className="w-full btn-brand py-2 type-caption rounded-md disabled:opacity-50">
+                {loading ? 'Enabling…' : 'Enable public link'}
+              </button>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 export default function DashboardsPage() {
   const projectId = useProjectStore(s => s.projectId)
   const qc = useQueryClient()
@@ -74,7 +132,7 @@ export default function DashboardsPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Dashboards" subtitle="Your saved charts, all in one place" />
+      <PageHeader title="Dashboards" subtitle="Your saved charts, all in one place" actions={<ShareDashboard projectId={projectId} />} />
 
       {isLoading ? (
         <Card><div className="h-40 flex items-center justify-center type-body-15 text-[var(--color-text-subtle)]">Loading…</div></Card>

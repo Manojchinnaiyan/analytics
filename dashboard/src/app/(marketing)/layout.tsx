@@ -1,11 +1,12 @@
 import type { Metadata } from 'next'
 import { MarketingNav } from '@/components/marketing/MarketingNav'
+import { Logo } from '@/components/Logo'
 import { brand } from '@/config/brand'
 
 const SITE = process.env.NEXT_PUBLIC_APP_URL ?? 'https://inspectuser.com'
 const TITLE = `${brand.name} — Product analytics, session replay & revenue attribution`
 const DESC =
-  'One platform for product analytics, funnels, retention, session replay and revenue-by-source attribution. Self-hosted, privacy-first, blazing fast. See exactly what drives growth.'
+  'One platform for product analytics, funnels, retention, session replay and revenue-by-source attribution. Privacy-first and blazing fast. See exactly what drives growth.'
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE),
@@ -50,9 +51,8 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
       <footer className="border-t border-[var(--color-border)] bg-[#FAFAFC]">
         <div className="mx-auto max-w-7xl px-5 py-14 grid grid-cols-2 md:grid-cols-6 gap-8">
           <div className="col-span-2">
-            <a href="/" className="flex items-center gap-2 mb-3">
-              <span className="grid place-items-center h-8 w-8 rounded-lg iu-aurora text-white font-bold">i</span>
-              <span className="text-[18px] font-semibold">{brand.name}</span>
+            <a href="/" className="flex items-center mb-3" aria-label={brand.name}>
+              <Logo className="h-9 w-9" />
             </a>
             <p className="text-[14px] text-[var(--color-text-subtle)] max-w-xs">{brand.tagline}</p>
           </div>
@@ -69,8 +69,8 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
         </div>
         <div className="border-t border-[var(--color-border)]">
           <div className="mx-auto max-w-7xl px-5 py-5 flex flex-col sm:flex-row items-center justify-between gap-2 text-[13px] text-[var(--color-text-subtle)]">
-            <span>© {brand.name}. Self-hosted product analytics.</span>
-            <span>Built for teams who want to own their data.</span>
+            <span>© {brand.name}. All-in-one product analytics.</span>
+            <span>Analytics · replay · revenue — priced by events.</span>
           </div>
         </div>
       </footer>

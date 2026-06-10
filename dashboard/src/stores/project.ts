@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { ssrStorage } from '@/lib/ssrStorage'
 
 interface ProjectState {
   projectId: string
@@ -30,6 +31,7 @@ export const useProjectStore = create<ProjectState>()(
     }),
     {
       name: 'amp-project',
+      storage: ssrStorage,
       partialize: (s) => ({
         projectId: s.projectId,
         apiKey: s.apiKey,

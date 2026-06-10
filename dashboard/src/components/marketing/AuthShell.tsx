@@ -1,4 +1,5 @@
 import { Check, TrendingUp } from 'lucide-react'
+import { Logo } from '@/components/Logo'
 import { brand } from '@/config/brand'
 
 /**
@@ -14,9 +15,8 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
         <div className="absolute inset-0 iu-grid opacity-70" aria-hidden />
         <div className="absolute -top-24 -left-24 h-96 w-96 iu-blob bg-[#4C85F5] opacity-25 iu-float-slow" aria-hidden />
 
-        <a href="/" className="relative flex items-center gap-2">
-          <span className="grid place-items-center h-9 w-9 rounded-lg iu-aurora text-white font-bold">i</span>
-          <span className="text-[19px] font-semibold text-[var(--color-text)]">{brand.name}</span>
+        <a href="/" className="relative flex items-center" aria-label={brand.name}>
+          <Logo className="h-10 w-10" />
         </a>
 
         <div className="relative max-w-md">
@@ -40,7 +40,7 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <ul className="mt-8 space-y-2.5">
-            {['Product analytics, replay & revenue in one', 'Self-hosted — own your data', 'Live in minutes, no data team'].map((t) => (
+            {['Product analytics, replay & revenue in one', 'GDPR-ready · inputs masked', 'Live in minutes, no data team'].map((t) => (
               <li key={t} className="flex items-center gap-2.5 text-[15px] text-[var(--color-text)]">
                 <span className="grid place-items-center h-5 w-5 rounded-full bg-[#16A34A]/10 text-[#16A34A]"><Check className="h-3.5 w-3.5" /></span>{t}
               </li>
@@ -48,15 +48,14 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
           </ul>
         </div>
 
-        <p className="relative text-[13px] text-[var(--color-text-subtle)]">© {brand.name}. Self-hosted product analytics.</p>
+        <p className="relative text-[13px] text-[var(--color-text-subtle)]">© {brand.name}. All-in-one product analytics.</p>
       </div>
 
       {/* Form panel */}
       <div className="flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-sm">
-          <a href="/" className="lg:hidden flex items-center justify-center gap-2 mb-8">
-            <span className="grid place-items-center h-8 w-8 rounded-lg iu-aurora text-white font-bold">i</span>
-            <span className="text-[18px] font-semibold text-[var(--color-text)]">{brand.name}</span>
+          <a href="/" className="lg:hidden flex items-center justify-center mb-8" aria-label={brand.name}>
+            <Logo className="h-10 w-10" />
           </a>
           {children}
         </div>

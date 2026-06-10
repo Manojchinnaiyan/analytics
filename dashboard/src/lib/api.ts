@@ -289,4 +289,15 @@ export const api = {
     queryApi.post(`/v1/projects/${projectId}/dashboard/charts`, chart).then(r => r.data),
   deleteDashboardChart: (projectId: string, chartId: string) =>
     queryApi.delete(`/v1/projects/${projectId}/dashboard/charts/${chartId}`).then(r => r.data),
+
+  // Public dashboard sharing
+  getDashboardShare: (projectId: string): Promise<{ token: string | null }> =>
+    queryApi.get(`/v1/projects/${projectId}/dashboard/share`).then(r => r.data),
+  enableDashboardShare: (projectId: string): Promise<{ token: string }> =>
+    queryApi.post(`/v1/projects/${projectId}/dashboard/share`).then(r => r.data),
+  disableDashboardShare: (projectId: string) =>
+    queryApi.delete(`/v1/projects/${projectId}/dashboard/share`).then(r => r.data),
 }
+
+/** Public (no-auth) base for the read-only shared dashboard. */
+export const PUBLIC_API_BASE = process.env.NEXT_PUBLIC_QUERY_API_URL ?? 'http://localhost:4001'

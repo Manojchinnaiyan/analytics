@@ -18,7 +18,7 @@ const FEATURES = [
 export default function FeaturesPage() {
   return (
     <>
-      <PageHero eyebrow="Features" title="Everything you need to understand growth" subtitle="Product analytics, session replay and revenue attribution — unified, fast and self-hosted." />
+      <PageHero eyebrow="Features" title="Everything you need to understand growth" subtitle="Product analytics, session replay and revenue attribution — unified, fast and privacy-first." />
       <section className="pb-24 bg-white">
         <div className="mx-auto max-w-7xl px-5 grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {FEATURES.map((f, i) => (

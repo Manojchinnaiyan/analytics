@@ -407,10 +407,13 @@ func main() {
 	protected.Post("/projects/:id/cohorts", cohortHandler.Create)
 	protected.Delete("/projects/:id/cohorts/:cohortId", cohortHandler.Delete)
 
-	dashboardHandler := handler.NewDashboardHandler(db, log)
+	dashboardHandler := handler.NewDashboardHandler(db, chConn, log)
 	protected.Get("/projects/:id/dashboard", dashboardHandler.List)
 	protected.Post("/projects/:id/dashboard/charts", dashboardHandler.SaveChart)
 	protected.Delete("/projects/:id/dashboard/charts/:chartId", dashboardHandler.DeleteChart)
+	protected.Get("/projects/:id/dashboard/share", dashboardHandler.GetShare)
+	protected.Post("/projects/:id/dashboard/share", dashboardHandler.EnableShare)
+	protected.Delete("/projects/:id/dashboard/share", dashboardHandler.DisableShare)
 
 	linkHandler := handler.NewLinkHandler(db, rdb, log)
 	protected.Get("/projects/:id/links", linkHandler.List)
@@ -481,6 +484,7 @@ func main() {
 	replayStore := replay.New(chConn, cfg.R2Endpoint, cfg.R2AccessKey, cfg.R2SecretKey, cfg.R2Bucket, log)
 	replayHandler := handler.NewReplayHandler(replayStore, rdb, log)
 	app.Post("/replay", replayHandler.Ingest) // api-key auth, outside the /v1 JWT prefix
+	app.Get("/public/dashboard/:token", dashboardHandler.PublicDashboard) // no-auth public read-only dashboard
 	protected.Get("/projects/:id/replays", replayHandler.List)
 	protected.Get("/projects/:id/replays/:sessionId", replayHandler.Get)
 	protected.Delete("/projects/:id/replays/:sessionId", middleware.RequirePerm(db, rdb, perms.ReplayManage), replayHandler.Delete)

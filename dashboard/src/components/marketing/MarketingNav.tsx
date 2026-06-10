@@ -5,6 +5,7 @@ import {
   BarChart3, Filter, Repeat, PlayCircle, DollarSign, Link2, MapPin, Gauge,
   ChevronDown, Menu, X,
 } from 'lucide-react'
+import { Logo } from '@/components/Logo'
 import { brand } from '@/config/brand'
 
 const FEATURES = [
@@ -63,9 +64,8 @@ export function MarketingNav() {
         ${scrolled
           ? 'border-[var(--color-border)] bg-white/80 backdrop-blur-xl shadow-[0_10px_40px_-12px_rgba(16,24,40,.25)]'
           : 'border-white/70 bg-white/60 backdrop-blur-xl shadow-[0_8px_30px_-12px_rgba(16,24,40,.18)]'}`}>
-        <a href="/" className="flex items-center gap-2 pl-1">
-          <span className="grid place-items-center h-8 w-8 rounded-lg iu-aurora text-white font-bold">i</span>
-          <span className="text-[17px] font-semibold text-[var(--color-text)]">{brand.name}</span>
+        <a href="/" className="flex items-center pl-1" aria-label={brand.name}>
+          <Logo className="h-9 w-9" />
         </a>
 
         <div className="hidden lg:flex items-center gap-0.5">

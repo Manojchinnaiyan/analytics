@@ -1,6 +1,7 @@
 import {
   LayoutGrid, BarChart3, Filter, Repeat, DollarSign, PlayCircle, Route, Settings, Search,
 } from 'lucide-react'
+import { Logo } from '@/components/Logo'
 
 /** A high-fidelity, self-animating preview of the InspectUser dashboard. Pure CSS+SVG. */
 export function DashboardPreview({ className = '' }: { className?: string }) {
@@ -41,7 +42,7 @@ export function DashboardPreview({ className = '' }: { className?: string }) {
         {/* sidebar */}
         <aside className="hidden sm:flex flex-col w-[148px] flex-shrink-0 border-r border-[var(--color-border)] bg-[#FAFBFC] p-3">
           <div className="flex items-center gap-2 px-1 mb-4">
-            <span className="grid place-items-center h-6 w-6 rounded-md iu-aurora text-white text-[12px] font-bold">i</span>
+            <Logo className="h-6 w-6" />
             <span className="text-[13px] font-semibold text-[var(--color-text)]">InspectUser</span>
           </div>
           <nav className="space-y-0.5">

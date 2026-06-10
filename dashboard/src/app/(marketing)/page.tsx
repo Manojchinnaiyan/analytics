@@ -8,6 +8,7 @@ import { DashboardPreview } from '@/components/marketing/DashboardPreview'
 import {
   FunnelPreview, RetentionPreview, ReplayPreview, RevenuePreview, SegmentPreview, VitalsPreview,
 } from '@/components/marketing/FeaturePreviews'
+import { Logo } from '@/components/Logo'
 import { brand } from '@/config/brand'
 
 const FEATURES = [
@@ -28,11 +29,28 @@ const SHOWCASE = [
     points: ['Source-attributed revenue', 'AOV · ARPU · ARPPU · LTV', 'Stripe & Shopify-ready'] },
 ]
 
-const COMPARE = [
-  ['Product analytics', true, false, true], ['Session replay', true, true, false],
-  ['Revenue attribution', true, false, false], ['Smart links on your domain', true, false, false],
-  ['Self-hosted / own your data', true, false, false], ['One flat price', true, false, false],
+// Named-competitor comparison. 1 = yes, 0.5 = partial, 0 = no.
+const RIVALS = [
+  { name: 'InspectUser', us: true },
+  { name: 'Amplitude', domain: 'amplitude.com' },
+  { name: 'Mixpanel', domain: 'mixpanel.com' },
+  { name: 'PostHog', domain: 'posthog.com' },
+  { name: 'Plausible', domain: 'plausible.io' },
 ]
+const MATRIX: [string, number, number, number, number, number][] = [
+  ['Product analytics', 1, 1, 1, 1, 0.5],
+  ['Session replay', 1, 1, 0, 1, 0],
+  ['Revenue attribution', 1, 1, 0.5, 0.5, 0],
+  ['Real-time analytics', 1, 1, 1, 1, 1],
+  ['Core Web Vitals', 1, 0.5, 0, 1, 0],
+  ['Identify users · visitor-level', 1, 1, 1, 1, 0],
+  ['GDPR & privacy controls', 1, 1, 0.5, 1, 1],
+  ['Smart links on your domain', 1, 0, 0, 0, 0],
+  ['Chat with your data', 0, 1, 0, 1, 0],
+  ['Public dashboards', 0.5, 1, 0.5, 1, 1],
+  ['Starts at', -1, -1, -1, -1, -1], // price row, rendered specially
+]
+const PRICES = ['$9/mo', '$49+/mo', '$25+/mo', '$0–pay-as-you-go', '$9/mo']
 
 export default function HomePage() {
   return (
@@ -49,7 +67,7 @@ export default function HomePage() {
             See exactly what <span className="iu-gradient-text">drives growth.</span>
           </Reveal>
           <Reveal as="p" delay={140} className="mt-5 text-[18px] sm:text-[19px] leading-relaxed text-[var(--color-text-muted)] max-w-2xl mx-auto">
-            {brand.name} unifies product analytics, session replay and revenue-by-source attribution in one blazing-fast, self-hosted platform. Stop guessing. Start growing.
+            {brand.name} unifies product analytics, session replay and revenue-by-source attribution in one blazing-fast platform — priced simply by events. Stop guessing. Start growing.
           </Reveal>
           <Reveal as="div" delay={220} className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <a href="/signup" className="group inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[var(--color-brand)] text-white text-[15px] font-medium shadow-lg shadow-[rgba(0,82,242,.22)] hover:bg-[var(--color-brand-hover)] transition-colors">
@@ -62,7 +80,7 @@ export default function HomePage() {
           <Reveal as="div" delay={300} className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[13px] text-[var(--color-text-subtle)]">
             <span className="inline-flex items-center gap-1.5"><Check className="h-4 w-4 text-[#16A34A]" /> 1-line install</span>
             <span className="inline-flex items-center gap-1.5"><Check className="h-4 w-4 text-[#16A34A]" /> No credit card</span>
-            <span className="inline-flex items-center gap-1.5"><Check className="h-4 w-4 text-[#16A34A]" /> Own your data</span>
+            <span className="inline-flex items-center gap-1.5"><Check className="h-4 w-4 text-[#16A34A]" /> GDPR-ready</span>
           </Reveal>
         </div>
 
@@ -90,7 +108,7 @@ export default function HomePage() {
             { v: <><span>&lt;</span><CountUp to={50} suffix="ms" /></>, k: 'Query latency' },
             { v: <CountUp to={2.4} decimals={1} suffix="B+" />, k: 'Events / day capacity' },
             { v: <CountUp to={1} suffix=" line" />, k: 'To install the SDK' },
-            { v: <CountUp to={100} suffix="%" />, k: 'Your data, self-hosted' },
+            { v: <CountUp to={10} suffix="k" />, k: 'Free events / month' },
           ].map((s, i) => (
             <Reveal key={i} delay={i * 80}>
               <div className="text-[30px] sm:text-[34px] font-semibold iu-gradient-text">{s.v}</div>
@@ -181,38 +199,55 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ───────── Comparison ───────── */}
+      {/* ───────── Comparison vs named competitors ───────── */}
       <section id="compare" className="py-24 bg-white">
-        <div className="mx-auto max-w-4xl px-5">
+        <div className="mx-auto max-w-5xl px-5">
           <Reveal className="text-center mb-12">
-            <h2 className="text-[34px] sm:text-[44px] font-semibold tracking-tight text-[var(--color-text)]">One tool instead of three</h2>
-            <p className="mt-4 text-[17px] text-[var(--color-text-muted)]">Replace your analytics + replay + attribution stack — and own the data.</p>
+            <h2 className="text-[34px] sm:text-[44px] font-semibold tracking-tight text-[var(--color-text)]">How {brand.name} compares</h2>
+            <p className="mt-4 text-[17px] text-[var(--color-text-muted)]">One platform for what usually takes three — at a fraction of the price.</p>
           </Reveal>
           <Reveal>
             <div className="overflow-x-auto rounded-2xl border border-[var(--color-border)] shadow-[0_24px_60px_-32px_rgba(16,24,40,.25)]">
-              <table className="w-full min-w-[480px] text-[14px] sm:text-[15px]">
+              <table className="w-full min-w-[660px] text-[14px] sm:text-[15px]">
                 <thead>
                   <tr className="bg-[#FAFBFD]">
                     <th className="text-left font-medium text-[var(--color-text-muted)] px-5 py-4">Capability</th>
-                    <th className="px-4 py-4 font-semibold text-[var(--color-brand)]">{brand.name}</th>
-                    <th className="px-4 py-4 font-medium text-[var(--color-text-subtle)]">Replay tools</th>
-                    <th className="px-4 py-4 font-medium text-[var(--color-text-subtle)]">Analytics SaaS</th>
+                    {RIVALS.map((r) => (
+                      <th key={r.name} className={`px-3 py-4 ${r.us ? 'bg-[var(--color-brand-soft)]' : ''}`}>
+                        <div className="flex flex-col items-center gap-1.5">
+                          {r.us
+                            ? <Logo className="h-7 w-7" />
+                            : <img src={`https://www.google.com/s2/favicons?domain=${r.domain}&sz=64`} alt={r.name} width={22} height={22} className="h-[22px] w-[22px] rounded" loading="lazy" />}
+                          <span className={`text-[12px] font-semibold ${r.us ? 'text-[var(--color-brand)]' : 'text-[var(--color-text-muted)]'}`}>{r.name}</span>
+                        </div>
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {COMPARE.map(([label, a, b, c]) => (
-                    <tr key={label as string} className="border-t border-[var(--color-border)]">
-                      <td className="px-5 py-3.5 text-[var(--color-text)]">{label}</td>
-                      {[a, b, c].map((v, j) => (
-                        <td key={j} className="px-4 py-3.5 text-center">
-                          {v ? <Check className="inline h-5 w-5 text-[#16A34A]" /> : <span className="text-[var(--color-text-subtle)]">—</span>}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
+                  {MATRIX.map((row) => {
+                    const label = row[0] as string
+                    const vals = row.slice(1) as number[]
+                    const isPrice = label === 'Starts at'
+                    return (
+                      <tr key={label} className={`border-t border-[var(--color-border)] ${isPrice ? 'bg-[#FAFBFD]' : ''}`}>
+                        <td className="px-5 py-3 text-[var(--color-text)] whitespace-nowrap font-medium">{label}</td>
+                        {isPrice
+                          ? PRICES.map((p, i) => <td key={p + i} className={`px-3 py-3 text-center text-[13px] font-semibold ${i === 0 ? 'text-[var(--color-brand)] bg-[var(--color-brand-soft)]' : 'text-[var(--color-text-muted)]'}`}>{p}</td>)
+                          : vals.map((v, i) => (
+                            <td key={label + i} className={`px-3 py-3 text-center ${i === 0 ? 'bg-[var(--color-brand-soft)]' : ''}`}>
+                              {v === 1 ? <Check className="inline h-5 w-5 text-[#16A34A]" />
+                                : v === 0.5 ? <span className="text-[#F59E0B] text-[16px] font-bold leading-none" title="Partial / add-on">~</span>
+                                : <span className="text-[var(--color-text-subtle)]">—</span>}
+                            </td>
+                          ))}
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
+            <p className="text-center text-[12px] text-[var(--color-text-subtle)] mt-3">✓ included · ~ partial or paid add-on · — not offered. Competitor capabilities as of 2026; logos belong to their owners.</p>
           </Reveal>
         </div>
       </section>
@@ -222,13 +257,13 @@ export default function HomePage() {
         <div className="mx-auto max-w-7xl px-5">
           <Reveal className="text-center mb-14">
             <h2 className="text-[34px] sm:text-[44px] font-semibold tracking-tight text-[var(--color-text)]">Simple, honest pricing</h2>
-            <p className="mt-4 text-[17px] text-[var(--color-text-muted)]">Self-host free, or let us run it. No surprise usage bills.</p>
+            <p className="mt-4 text-[17px] text-[var(--color-text-muted)]">Priced by events — start free, scale as you grow. No surprise bills.</p>
           </Reveal>
           <div className="grid md:grid-cols-3 gap-5 max-w-5xl mx-auto items-center">
             {[
-              { name: 'Self-hosted', price: 'Free', sub: 'Run it on your own server', cta: 'Get started', highlight: false, feats: ['Unlimited events', 'All features', 'Your infrastructure', 'Community support'] },
-              { name: 'Cloud', price: '$49', sub: 'per month, flat', cta: 'Start free trial', highlight: true, feats: ['Fully managed', 'Session replay included', 'Revenue attribution', 'Email support'] },
-              { name: 'Scale', price: 'Custom', sub: 'For high-volume teams', cta: 'Talk to us', highlight: false, feats: ['SSO & roles', 'Warehouse export', 'SLA & priority support', 'Onboarding'] },
+              { name: 'Free', price: 'Free', sub: '10k events / month', cta: 'Start free', highlight: false, feats: ['Core analytics & funnels', 'Real-time + Web Vitals', '1 project', 'Community support'] },
+              { name: 'Starter', price: '$9', sub: '100k events / month', cta: 'Start free', highlight: true, feats: ['Everything in Free', 'Session replay', 'Revenue attribution', 'Smart links', 'Email support'] },
+              { name: 'Growth', price: '$29', sub: '1M events / month', cta: 'Start free', highlight: false, feats: ['Everything in Starter', 'Unlimited projects', 'Team roles', 'Priority support'] },
             ].map((p, i) => (
               <Reveal key={p.name} delay={i * 90}>
                 <div className={`relative h-full rounded-2xl p-7 border ${p.highlight ? 'border-[var(--color-brand)] bg-white shadow-[0_30px_70px_-26px_rgba(0,82,242,.4)] md:scale-105' : 'border-[var(--color-border)] bg-white'}`}>
@@ -258,14 +293,14 @@ export default function HomePage() {
               <div className="absolute top-0 left-1/2 -translate-x-1/2 h-64 w-[700px] iu-blob bg-[#4C85F5] opacity-20" aria-hidden />
               <div className="relative">
                 <h2 className="text-[34px] sm:text-[48px] font-semibold tracking-tight text-[var(--color-text)]">Start seeing what <span className="iu-gradient-text">drives growth</span></h2>
-                <p className="mt-4 text-[18px] text-[var(--color-text-muted)] max-w-xl mx-auto">Install in minutes. Own your data. Replace three tools with one.</p>
+                <p className="mt-4 text-[18px] text-[var(--color-text-muted)] max-w-xl mx-auto">Install in minutes. Priced by events. Replace three tools with one.</p>
                 <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
                   <a href="/signup" className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-[var(--color-brand)] text-white text-[16px] font-semibold hover:bg-[var(--color-brand-hover)] transition-colors shadow-lg shadow-[rgba(0,82,242,.25)]">Start free <ArrowRight className="h-4 w-4" /></a>
                   <a href="/login" className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl border border-[var(--color-border)] bg-white text-[var(--color-text)] text-[16px] font-medium hover:border-[var(--color-brand)] transition-colors">Log in</a>
                 </div>
                 <div className="mt-7 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[13px] text-[var(--color-text-subtle)]">
                   <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-4 w-4 text-[#16A34A]" /> GDPR-friendly</span>
-                  <span className="inline-flex items-center gap-1.5"><Globe className="h-4 w-4 text-[#16A34A]" /> Self-hosted</span>
+                  <span className="inline-flex items-center gap-1.5"><Globe className="h-4 w-4 text-[#16A34A]" /> Real-time</span>
                   <span className="inline-flex items-center gap-1.5"><Zap className="h-4 w-4 text-[#16A34A]" /> Blazing fast</span>
                 </div>
               </div>

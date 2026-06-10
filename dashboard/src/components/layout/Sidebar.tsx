@@ -10,6 +10,7 @@ import {
   Repeat, Zap, Route, Tags, Globe, Bell, FlaskConical, PlayCircle, Terminal, Sigma, Gauge, DollarSign, ScrollText, DatabaseZap,
 } from 'lucide-react'
 import { clsx } from 'clsx'
+import { Logo } from '@/components/Logo'
 import { brand } from '@/config/brand'
 import { useUIStore } from '@/stores/ui'
 import { usePermission } from '@/stores/project'
@@ -107,10 +108,7 @@ export function Sidebar() {
       {/* Header */}
       <div className="h-14 flex items-center justify-between px-3 border-b border-[var(--color-border)]">
         <div className="flex items-center gap-2 overflow-hidden">
-          <div className="w-7 h-7 rounded-md bg-[#0052F2] flex items-center justify-center text-white type-caption flex-shrink-0">
-            {brand.name.slice(0, 1)}
-          </div>
-          {expanded && <span className="type-h3-16 text-[var(--color-text)] truncate">{brand.name}</span>}
+          <Logo className="w-7 h-7 flex-shrink-0" />
         </div>
         {expanded && (
           <button

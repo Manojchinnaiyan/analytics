@@ -563,3 +563,19 @@
 }
 .iu-noise { background-image: radial-gradient(rgba(255,255,255,.05) 1px, transparent 1px); background-size: 3px 3px; }
 .iu-glass { background: rgba(255,255,255,.06); backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,.12); }
+
+/* ── Thin scrollbars (was too wide) ──────────────────────────────────── */
+* {
+  scrollbar-width: thin;                                /* Firefox */
+  scrollbar-color: rgba(16, 24, 40, 0.22) transparent;
+}
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: rgba(16, 24, 40, 0.22);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover { background: rgba(16, 24, 40, 0.4); background-clip: padding-box; }
+*::-webkit-scrollbar-corner { background: transparent; }

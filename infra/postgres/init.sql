@@ -86,3 +86,12 @@ CREATE INDEX IF NOT EXISTS idx_charts_project ON charts(project_id);
 CREATE INDEX IF NOT EXISTS idx_dashboards_project ON dashboards(project_id);
 CREATE INDEX IF NOT EXISTS idx_event_definitions_project ON event_definitions(project_id);
 CREATE INDEX IF NOT EXISTS idx_cohorts_project ON cohorts(project_id);
+
+-- Public dashboard shares: a read-only token that exposes a project's saved
+-- charts at /public/dashboard/<token> with no login. One share per project.
+CREATE TABLE IF NOT EXISTS dashboard_shares (
+    token       VARCHAR(40) PRIMARY KEY,
+    project_id  UUID UNIQUE REFERENCES projects(id) ON DELETE CASCADE,
+    name        VARCHAR(255) NOT NULL DEFAULT 'Public dashboard',
+    created_at  TIMESTAMPTZ DEFAULT NOW()
+);
