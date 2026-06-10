@@ -189,8 +189,8 @@ export default function HomePage() {
             <p className="mt-4 text-[17px] text-[var(--color-text-muted)]">Replace your analytics + replay + attribution stack — and own the data.</p>
           </Reveal>
           <Reveal>
-            <div className="overflow-hidden rounded-2xl border border-[var(--color-border)] shadow-[0_24px_60px_-32px_rgba(16,24,40,.25)]">
-              <table className="w-full text-[15px]">
+            <div className="overflow-x-auto rounded-2xl border border-[var(--color-border)] shadow-[0_24px_60px_-32px_rgba(16,24,40,.25)]">
+              <table className="w-full min-w-[480px] text-[14px] sm:text-[15px]">
                 <thead>
                   <tr className="bg-[#FAFBFD]">
                     <th className="text-left font-medium text-[var(--color-text-muted)] px-5 py-4">Capability</th>
