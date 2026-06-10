@@ -513,3 +513,53 @@
   content: ''; position: absolute; inset: 0; border-radius: inherit;
   border: 1px solid #0052F2; animation: iu-pulse-ring 2.4s ease-out infinite;
 }
+
+/* ===== Premium marketing layer ===== */
+@keyframes iu-mesh-move {
+  0%,100% { transform: translate(0,0) scale(1) }
+  33%     { transform: translate(60px,-40px) scale(1.15) }
+  66%     { transform: translate(-40px,30px) scale(.92) }
+}
+@keyframes iu-glow { 0%,100% { opacity:.45 } 50% { opacity:.85 } }
+@keyframes iu-rise { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-16px) } }
+@keyframes iu-count-noop { to { opacity:1 } }
+@keyframes iu-conic { to { transform: rotate(360deg) } }
+
+.iu-hero-dark { background:
+  radial-gradient(1200px 600px at 50% -10%, #10183A 0%, #07070D 55%, #050509 100%); }
+
+.iu-mesh-blob {
+  position:absolute; border-radius:9999px; filter: blur(100px); opacity:.5;
+  animation: iu-mesh-move 20s ease-in-out infinite;
+}
+.iu-glow-pulse { animation: iu-glow 5s ease-in-out infinite }
+.iu-rise { animation: iu-rise 7s ease-in-out infinite }
+
+/* gradient border (light surface) */
+.iu-gborder {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(#fff,#fff) padding-box,
+    linear-gradient(130deg, rgba(0,82,242,.55), rgba(139,92,246,.55) 50%, rgba(0,82,242,.08)) border-box;
+}
+/* gradient border (dark surface) */
+.iu-gborder-dark {
+  border: 1px solid transparent;
+  background:
+    linear-gradient(#0C0C16,#0C0C16) padding-box,
+    linear-gradient(130deg, rgba(99,102,241,.7), rgba(139,92,246,.4) 50%, rgba(76,133,245,.1)) border-box;
+}
+/* glow card hover */
+.iu-card-glow { transition: transform .35s cubic-bezier(.22,.61,.36,1), box-shadow .35s; }
+.iu-card-glow:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 0 0 1px rgba(0,82,242,.25), 0 40px 80px -28px rgba(0,82,242,.45);
+}
+/* rotating conic glow ring behind hero mockup */
+.iu-conic-ring::before {
+  content:''; position:absolute; inset:-2px; border-radius:inherit; z-index:-1;
+  background: conic-gradient(from 0deg, #0052F2, #8B5CF6, #22D3EE, #0052F2);
+  filter: blur(14px); opacity:.55; animation: iu-conic 8s linear infinite;
+}
+.iu-noise { background-image: radial-gradient(rgba(255,255,255,.05) 1px, transparent 1px); background-size: 3px 3px; }
+.iu-glass { background: rgba(255,255,255,.06); backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,.12); }

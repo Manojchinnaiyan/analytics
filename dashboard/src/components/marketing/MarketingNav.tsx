@@ -22,14 +22,14 @@ const PRODUCTS = [
   { icon: DollarSign, title: 'E-commerce', desc: 'Shopify-ready revenue analytics', href: '/#products' },
 ]
 
-function Dropdown({ label, items }: { label: string; items: typeof FEATURES }) {
+function Dropdown({ label, items, light }: { label: string; items: typeof FEATURES; light: boolean }) {
   return (
     <div className="relative group">
-      <button className="flex items-center gap-1 px-3 py-2 text-[15px] text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors">
+      <button className={`flex items-center gap-1 px-3 py-2 text-[15px] transition-colors ${light ? 'text-white/75 hover:text-white' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}`}>
         {label} <ChevronDown className="h-3.5 w-3.5 transition-transform group-hover:rotate-180" />
       </button>
       <div className="absolute left-1/2 -translate-x-1/2 top-full pt-3 opacity-0 invisible translate-y-1 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 transition-all duration-200">
-        <div className="w-[460px] grid grid-cols-2 gap-1 p-2 rounded-2xl border border-[var(--color-border)] bg-white shadow-[0_24px_60px_-18px_rgba(16,24,40,.22)]">
+        <div className="w-[460px] grid grid-cols-2 gap-1 p-2 rounded-2xl border border-[var(--color-border)] bg-white shadow-[0_24px_60px_-18px_rgba(16,24,40,.28)]">
           {items.map((it) => (
             <a key={it.title} href={it.href} className="flex gap-3 p-3 rounded-xl hover:bg-[var(--color-brand-soft)] transition-colors">
               <span className="flex-shrink-0 grid place-items-center h-9 w-9 rounded-lg bg-[var(--color-brand-soft)] text-[var(--color-brand)]">
@@ -52,33 +52,37 @@ export function MarketingNav() {
   const [open, setOpen] = useState(false)
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8)
+    const onScroll = () => setScrolled(window.scrollY > 12)
     onScroll()
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
+  const light = !scrolled // light text while over the dark hero
+
   return (
-    <header className={`fixed top-0 inset-x-0 z-50 transition-all ${scrolled ? 'bg-white/80 backdrop-blur-xl border-b border-[var(--color-border)]' : 'bg-transparent'}`}>
+    <header className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${scrolled ? 'bg-white/85 backdrop-blur-xl border-b border-[var(--color-border)]' : 'bg-transparent'}`}>
       <nav className="mx-auto max-w-7xl px-5 h-16 flex items-center justify-between">
         <a href="/" className="flex items-center gap-2">
           <span className="grid place-items-center h-8 w-8 rounded-lg iu-aurora text-white font-bold">i</span>
-          <span className="text-[18px] font-semibold text-[var(--color-text)]">{brand.name}</span>
+          <span className={`text-[18px] font-semibold transition-colors ${light ? 'text-white' : 'text-[var(--color-text)]'}`}>{brand.name}</span>
         </a>
 
         <div className="hidden lg:flex items-center gap-1">
-          <Dropdown label="Features" items={FEATURES} />
-          <Dropdown label="Products" items={PRODUCTS} />
-          <a href="/#pricing" className="px-3 py-2 text-[15px] text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors">Pricing</a>
-          <a href="/#compare" className="px-3 py-2 text-[15px] text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors">Why us</a>
+          <Dropdown label="Features" items={FEATURES} light={light} />
+          <Dropdown label="Products" items={PRODUCTS} light={light} />
+          {['Pricing|/#pricing', 'Why us|/#compare'].map((x) => {
+            const [l, h] = x.split('|')
+            return <a key={l} href={h} className={`px-3 py-2 text-[15px] transition-colors ${light ? 'text-white/75 hover:text-white' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}`}>{l}</a>
+          })}
         </div>
 
         <div className="hidden lg:flex items-center gap-2">
-          <a href="/login" className="px-4 py-2 text-[15px] font-medium text-[var(--color-text)] hover:text-[var(--color-brand)] transition-colors">Log in</a>
-          <a href="/signup" className="px-4 py-2 text-[15px] font-medium text-white rounded-lg bg-[var(--color-brand)] hover:bg-[var(--color-brand-hover)] transition-colors shadow-sm">Start free</a>
+          <a href="/login" className={`px-4 py-2 text-[15px] font-medium transition-colors ${light ? 'text-white/90 hover:text-white' : 'text-[var(--color-text)] hover:text-[var(--color-brand)]'}`}>Log in</a>
+          <a href="/signup" className={`px-4 py-2 text-[15px] font-medium rounded-lg transition-all ${light ? 'bg-white text-[#07070D] hover:shadow-[0_0_24px_-4px_rgba(255,255,255,.7)]' : 'bg-[var(--color-brand)] text-white hover:bg-[var(--color-brand-hover)] shadow-sm'}`}>Start free</a>
         </div>
 
-        <button onClick={() => setOpen(v => !v)} className="lg:hidden grid place-items-center h-10 w-10 rounded-lg text-[var(--color-text)]" aria-label="Menu">
+        <button onClick={() => setOpen(v => !v)} className={`lg:hidden grid place-items-center h-10 w-10 rounded-lg ${light ? 'text-white' : 'text-[var(--color-text)]'}`} aria-label="Menu">
           {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
       </nav>
