@@ -2,6 +2,11 @@
 // SDK — no third-party CDN) and uploads batched rrweb events to the replay
 // endpoint. Folded into the SDK so one init() does analytics + replay, the way
 // PostHog/Amplitude ship it.
+//
+// NOTE on idle: pausing/restarting rrweb mid-session corrupts the event stream
+// (incremental events depend on a continuous mirror), so we record continuously.
+// Storage is instead controlled by sampleRate, throttled high-frequency signals,
+// and server-side retention — none of which break playback.
 
 import { record } from 'rrweb'
 
@@ -23,8 +28,7 @@ interface ReplayConfig {
 export function startSessionReplay(cfg: ReplayConfig): void {
   if (started || typeof window === 'undefined' || typeof document === 'undefined') return
 
-  // Decide once per session whether to record, and remember it so the choice is
-  // stable across page navigations within the same session.
+  // Decide once per session whether to record, stable across navigations.
   const rate = cfg.sampleRate ?? 1
   const key = '_iu_replay_' + cfg.sessionId
   let decision: string | null
@@ -45,9 +49,7 @@ export function startSessionReplay(cfg: ReplayConfig): void {
   const begin = () => {
     let buf: unknown[] = []
     record({
-      emit(event) {
-        buf.push(event)
-      },
+      emit(event) { buf.push(event) },
       maskAllInputs: cfg.maskAllInputs ?? true,
       maskTextSelector: cfg.maskTextSelector ?? '.mask',
       blockSelector: cfg.blockSelector ?? '.no-record',

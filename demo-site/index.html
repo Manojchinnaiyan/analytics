@@ -214,7 +214,6 @@
       s.src = '/rrweb.min.js'  // self-hosted, first-party (not a third-party CDN)
       s.onload = () => {
         let buf = []
-        window.rrweb.record({ emit: e => buf.push(e), maskAllInputs: true, sampling: { mousemove: 50, scroll: 150 } })
         const flush = (beacon) => {
           if (!buf.length) return
           const body = JSON.stringify({ api_key: key, session_id: sid, distinct_id: did, events: buf })
@@ -222,6 +221,7 @@
           if (beacon && navigator.sendBeacon) navigator.sendBeacon(REPLAY_URL + '/replay', new Blob([body], { type: 'application/json' }))
           else fetch(REPLAY_URL + '/replay', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true })
         }
+        window.rrweb.record({ emit: e => buf.push(e), maskAllInputs: true, sampling: { mousemove: 50, scroll: 150 } })
         setInterval(() => flush(false), 4000)
         document.addEventListener('visibilitychange', () => { if (document.hidden) flush(true) })
         logEvent('Replay recording started', { session: sid.slice(0, 12), to: REPLAY_URL }, 'system')

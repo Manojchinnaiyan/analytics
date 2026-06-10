@@ -72,6 +72,7 @@ export function MarketingNav() {
           <Dropdown label="Features" items={FEATURES} />
           <Dropdown label="Products" items={PRODUCTS} />
           <a href="/pricing" className="px-3 py-2 text-[14px] text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors">Pricing</a>
+          <a href="/docs" className="px-3 py-2 text-[14px] text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors">Docs</a>
           <a href="/#compare" className="px-3 py-2 text-[14px] text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors">Why us</a>
         </div>
 

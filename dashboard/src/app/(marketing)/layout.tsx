@@ -26,7 +26,7 @@ export const metadata: Metadata = {
 }
 
 const FOOTER = {
-  Product: [['Features', '/features'], ['Pricing', '/pricing'], ['Why us', '/#compare'], ['Sign up', '/signup']],
+  Product: [['Features', '/features'], ['Pricing', '/pricing'], ['Docs', '/docs'], ['Why us', '/#compare']],
   Solutions: [['E-commerce', '/features'], ['SaaS', '/features'], ['Marketing', '/features'], ['Session replay', '/features']],
   Company: [['About', '/about'], ['Blog', '/blog'], ['Contact', '/contact'], ['Log in', '/login']],
   Legal: [['Privacy', '/privacy'], ['Terms', '/terms'], ['Security', '/security'], ['GDPR', '/privacy']],
