@@ -25,10 +25,10 @@ export const metadata: Metadata = {
 }
 
 const FOOTER = {
-  Product: [['Features', '/#features'], ['Products', '/#products'], ['Pricing', '/#pricing'], ['Why us', '/#compare']],
-  Solutions: [['E-commerce', '/#products'], ['SaaS', '/#products'], ['Marketing', '/#products'], ['Mobile apps', '/#products']],
-  Company: [['About', '/#'], ['Blog', '/#'], ['Careers', '/#'], ['Contact', '/#']],
-  Legal: [['Privacy', '/#'], ['Terms', '/#'], ['Security', '/#'], ['GDPR', '/#']],
+  Product: [['Features', '/features'], ['Pricing', '/pricing'], ['Why us', '/#compare'], ['Sign up', '/signup']],
+  Solutions: [['E-commerce', '/features'], ['SaaS', '/features'], ['Marketing', '/features'], ['Session replay', '/features']],
+  Company: [['About', '/about'], ['Blog', '/blog'], ['Contact', '/contact'], ['Log in', '/login']],
+  Legal: [['Privacy', '/privacy'], ['Terms', '/terms'], ['Security', '/security'], ['GDPR', '/privacy']],
 }
 
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {

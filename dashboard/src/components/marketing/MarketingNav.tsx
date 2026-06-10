@@ -8,12 +8,12 @@ import {
 import { brand } from '@/config/brand'
 
 const FEATURES = [
-  { icon: BarChart3, title: 'Product analytics', desc: 'Events, segmentation, paths', href: '/#features' },
-  { icon: Filter, title: 'Funnels', desc: 'Find where users drop off', href: '/#features' },
-  { icon: Repeat, title: 'Retention & cohorts', desc: 'Who comes back, and why', href: '/#features' },
-  { icon: PlayCircle, title: 'Session replay', desc: 'Watch real user sessions', href: '/#features' },
-  { icon: DollarSign, title: 'Revenue attribution', desc: 'Money tied to behavior', href: '/#features' },
-  { icon: Gauge, title: 'Web vitals', desc: 'Performance that converts', href: '/#features' },
+  { icon: BarChart3, title: 'Product analytics', desc: 'Events, segmentation, paths', href: '/features' },
+  { icon: Filter, title: 'Funnels', desc: 'Find where users drop off', href: '/features' },
+  { icon: Repeat, title: 'Retention & cohorts', desc: 'Who comes back, and why', href: '/features' },
+  { icon: PlayCircle, title: 'Session replay', desc: 'Watch real user sessions', href: '/features' },
+  { icon: DollarSign, title: 'Revenue attribution', desc: 'Money tied to behavior', href: '/features' },
+  { icon: Gauge, title: 'Web vitals', desc: 'Performance that converts', href: '/features' },
 ]
 const PRODUCTS = [
   { icon: Link2, title: 'Smart Links', desc: 'Branded links on your domain', href: '/#products' },
@@ -58,7 +58,7 @@ export function MarketingNav() {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  const light = !scrolled // light text while over the dark hero
+  const light = false // white hero → always dark, legible nav text
 
   return (
     <header className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${scrolled ? 'bg-white/85 backdrop-blur-xl border-b border-[var(--color-border)]' : 'bg-transparent'}`}>
@@ -71,7 +71,7 @@ export function MarketingNav() {
         <div className="hidden lg:flex items-center gap-1">
           <Dropdown label="Features" items={FEATURES} light={light} />
           <Dropdown label="Products" items={PRODUCTS} light={light} />
-          {['Pricing|/#pricing', 'Why us|/#compare'].map((x) => {
+          {['Pricing|/pricing', 'Why us|/#compare'].map((x) => {
             const [l, h] = x.split('|')
             return <a key={l} href={h} className={`px-3 py-2 text-[15px] transition-colors ${light ? 'text-white/75 hover:text-white' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}`}>{l}</a>
           })}
