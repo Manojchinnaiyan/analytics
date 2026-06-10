@@ -42,7 +42,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
     offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
   }
   return (
-    <div className="bg-white text-[var(--color-text)] antialiased">
+    <div className="bg-white text-[var(--color-text)] antialiased overflow-x-clip">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <MarketingNav />
       <main>{children}</main>
