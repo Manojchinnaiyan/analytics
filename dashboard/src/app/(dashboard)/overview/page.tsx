@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { PageSkeleton } from '@/components/ui/Skeleton'
 import { useQuery } from '@tanstack/react-query'
 import {
   Activity, Users, UserPlus, Timer, Repeat, Zap,
@@ -68,6 +69,8 @@ export default function OverviewPage() {
   const ret = data?.retention as { d1: number; d1_eligible: number; d7: number; d7_eligible: number } | undefined
   const topEvents: { event_type: string; count: number; users: number }[] = data?.top_events ?? []
   const topMax = topEvents[0]?.count ?? 1
+
+  if (isLoading) return <PageSkeleton />
 
   return (
     <div className="space-y-5">

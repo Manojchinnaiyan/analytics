@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Skeleton, TableSkeleton } from '@/components/ui/Skeleton'
+import { Skeleton, TableSkeleton, PageSkeleton } from '@/components/ui/Skeleton'
 import { useQuery } from '@tanstack/react-query'
 import { RetentionChart } from '@/components/charts/RetentionChart'
 import { EventSelect } from '@/components/EventSelect'
@@ -43,6 +43,8 @@ export default function RetentionPage() {
     enabled: !!projectId,
   })
   const unitLabel = granularity === 'week' ? 'Week' : granularity === 'month' ? 'Month' : 'Day'
+
+  if (isLoading) return <PageSkeleton />
 
   return (
     <div className="space-y-5">

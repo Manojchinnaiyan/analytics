@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Skeleton, TableSkeleton } from '@/components/ui/Skeleton'
+import { Skeleton, TableSkeleton, PageSkeleton } from '@/components/ui/Skeleton'
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { Plus, Trash2, Target, Clock, Ban } from 'lucide-react'
@@ -86,6 +86,8 @@ export default function FunnelsPage() {
   function analyzeDropoff(eventType: string) {
     router.push(`/paths?from=${encodeURIComponent(eventType)}`)
   }
+
+  if (isLoading) return <PageSkeleton />
 
   return (
     <div className="space-y-5">

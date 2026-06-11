@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Skeleton, TableSkeleton } from '@/components/ui/Skeleton'
+import { Skeleton, TableSkeleton, PageSkeleton } from '@/components/ui/Skeleton'
 import { useQuery } from '@tanstack/react-query'
 import { Sigma } from 'lucide-react'
 import { SegmentationChart } from '@/components/charts/SegmentationChart'
@@ -70,6 +70,8 @@ export default function FormulaPage() {
       })
     } catch (e) { formulaError = (e as Error).message }
   }
+
+  if (isLoading) return <PageSkeleton />
 
   return (
     <div className="space-y-5">

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Skeleton, TableSkeleton } from '@/components/ui/Skeleton'
+import { Skeleton, TableSkeleton, PageSkeleton } from '@/components/ui/Skeleton'
 import { useQuery } from '@tanstack/react-query'
 import { Repeat, Users, Sparkles, TrendingUp } from 'lucide-react'
 import { api } from '@/lib/api'
@@ -25,6 +25,8 @@ export default function LifecyclePage() {
 
   const series: LifecycleRow[] = data?.series ?? []
   const pct = (v: number) => `${((v ?? 0) * 100).toFixed(1)}%`
+
+  if (isLoading) return <PageSkeleton />
 
   return (
     <div className="space-y-5">

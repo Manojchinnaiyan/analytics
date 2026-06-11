@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Skeleton, TableSkeleton } from '@/components/ui/Skeleton'
+import { Skeleton, TableSkeleton, PageSkeleton } from '@/components/ui/Skeleton'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Eye, MousePointer2, Users, LogOut, Layers, Timer, UserPlus, X, Target, Plus, Trash2 } from 'lucide-react'
 import {
@@ -295,6 +295,8 @@ export default function WebAnalyticsPage() {
   const activeFilters = Object.entries(filters)
   const trend = data?.trend ?? []
   const metricColor = METRICS.find(m => m.value === metric)?.color ?? '#0052F2'
+
+  if (isLoading) return <PageSkeleton />
 
   return (
     <div className="space-y-5">

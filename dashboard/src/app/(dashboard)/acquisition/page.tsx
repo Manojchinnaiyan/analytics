@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Skeleton, TableSkeleton } from '@/components/ui/Skeleton'
+import { Skeleton, TableSkeleton, PageSkeleton } from '@/components/ui/Skeleton'
 import { useQuery } from '@tanstack/react-query'
 import { Radio, Users, Target } from 'lucide-react'
 import { api } from '@/lib/api'
@@ -77,6 +77,8 @@ export default function AcquisitionPage() {
 
   const showConv = !!conversion
   const overallRate = data?.total_users > 0 ? (data.total_conversions / data.total_users) : 0
+
+  if (isLoading) return <PageSkeleton />
 
   return (
     <div className="space-y-5">

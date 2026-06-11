@@ -5,6 +5,37 @@ export function Skeleton({ className }: { className?: string }) {
   return <div className={clsx('iu-skeleton rounded-md', className)} aria-hidden />
 }
 
+/**
+ * Full content-area skeleton — header + controls + stat cards + chart + table.
+ * Use as the initial-load state of a page so the WHOLE right side shimmers, not
+ * just one widget.
+ */
+export function PageSkeleton() {
+  return (
+    <div className="space-y-5">
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-2">
+          <Skeleton className="h-7 w-56" />
+          <Skeleton className="h-4 w-80" />
+        </div>
+        <Skeleton className="h-9 w-32" />
+      </div>
+      <div className="flex flex-wrap gap-3">
+        <Skeleton className="h-9 w-44" />
+        <Skeleton className="h-9 w-36" />
+        <Skeleton className="h-9 w-28" />
+      </div>
+      <StatsSkeleton />
+      <div className="rounded-xl border border-[var(--color-border)] p-5">
+        <ChartSkeleton height="h-80" />
+      </div>
+      <div className="rounded-xl border border-[var(--color-border)] p-5">
+        <TableSkeleton rows={6} />
+      </div>
+    </div>
+  )
+}
+
 /** KPI stat-card row. */
 export function StatsSkeleton({ count = 4 }: { count?: number }) {
   return (
