@@ -1,12 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { ArrowRight } from 'lucide-react'
 import { track, identify } from '@/lib/inspectuser.mjs'
 import { authApi, saveToken } from '@/lib/auth'
 import { useProjectStore } from '@/stores/project'
 import { AuthShell } from '@/components/marketing/AuthShell'
+import { RedirectIfAuthed } from '@/components/RedirectIfAuthed'
 
 const FIELDS = [
   { label: 'Full name',    field: 'name',     type: 'text',     placeholder: 'Manoj Chinnaiyan' },
@@ -22,7 +22,6 @@ const inputCls =
   'w-full border border-[var(--color-border)] rounded-xl px-3.5 py-2.5 text-[15px] text-[var(--color-text)] placeholder:text-[var(--color-text-subtle)] focus:outline-none focus:border-[var(--color-brand)] focus:ring-4 focus:ring-[var(--color-brand-soft)] transition-all'
 
 export default function SignupPage() {
-  const router = useRouter()
   const setProject = useProjectStore(s => s.setProject)
   const [form, setForm] = useState<FormState>({ name: '', email: '', password: '', org_name: '', org_slug: '' })
   const [error, setError] = useState('')
@@ -46,17 +45,18 @@ export default function SignupPage() {
       })
       identify(res.user_id, { email: res.email ?? form.email, name: form.name, org: form.org_name })
       track('Signed Up', { org: form.org_name })
-      router.push('/welcome')
+      // Hard navigation so the app boots fresh with the token already saved.
+      window.location.href = '/welcome'
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
       setError(msg ?? 'Failed to create account')
-    } finally {
       setLoading(false)
     }
   }
 
   return (
     <AuthShell>
+      <RedirectIfAuthed />
       <h1 className="text-[26px] font-semibold tracking-tight text-[var(--color-text)]">Create your account</h1>
       <p className="mt-1.5 text-[15px] text-[var(--color-text-muted)]">Free to start — no credit card.</p>
 

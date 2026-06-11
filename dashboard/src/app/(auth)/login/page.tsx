@@ -1,10 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { ArrowRight } from 'lucide-react'
 import { track, identify } from '@/lib/inspectuser.mjs'
 import { authApi, saveToken } from '@/lib/auth'
+import { RedirectIfAuthed } from '@/components/RedirectIfAuthed'
 import { useProjectStore } from '@/stores/project'
 import { AuthShell } from '@/components/marketing/AuthShell'
 
@@ -12,7 +12,6 @@ const inputCls =
   'w-full border border-[var(--color-border)] rounded-xl px-3.5 py-2.5 text-[15px] text-[var(--color-text)] placeholder:text-[var(--color-text-subtle)] focus:outline-none focus:border-[var(--color-brand)] focus:ring-4 focus:ring-[var(--color-brand-soft)] transition-all'
 
 export default function LoginPage() {
-  const router = useRouter()
   const setProject = useProjectStore(s => s.setProject)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -41,16 +40,19 @@ export default function LoginPage() {
       })
       identify(res.user_id, { email: res.email ?? email })
       track('Logged In', { method: 'password' })
-      router.push('/overview')
+      // Hard navigation: the dashboard boots fresh with the token already in
+      // localStorage. Avoids the SPA race where the first click didn't navigate
+      // (router.push interrupted by the re-render / auth guard).
+      window.location.href = '/overview'
     } catch {
       setError('Invalid email or password')
-    } finally {
       setLoading(false)
     }
   }
 
   return (
     <AuthShell>
+      <RedirectIfAuthed />
       <h1 className="text-[26px] font-semibold tracking-tight text-[var(--color-text)]">Welcome back</h1>
       <p className="mt-1.5 text-[15px] text-[var(--color-text-muted)]">Sign in to your dashboard.</p>
 

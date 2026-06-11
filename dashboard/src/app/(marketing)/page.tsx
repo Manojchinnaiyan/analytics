@@ -9,6 +9,7 @@ import {
   FunnelPreview, RetentionPreview, ReplayPreview, RevenuePreview, SegmentPreview, VitalsPreview,
 } from '@/components/marketing/FeaturePreviews'
 import { Logo } from '@/components/Logo'
+import { RedirectIfAuthed } from '@/components/RedirectIfAuthed'
 import { brand } from '@/config/brand'
 
 const FEATURES = [
@@ -55,6 +56,7 @@ const PRICES = ['$9/mo', '$49+/mo', '$25+/mo', '$0–pay-as-you-go', '$9/mo']
 export default function HomePage() {
   return (
     <>
+      <RedirectIfAuthed />
       {/* ───────── Hero ───────── */}
       <section className="relative overflow-hidden pt-32 pb-16 sm:pt-40 sm:pb-20 bg-white">
         <div className="absolute inset-0 iu-grid" aria-hidden />
