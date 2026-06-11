@@ -579,3 +579,13 @@
 }
 *::-webkit-scrollbar-thumb:hover { background: rgba(16, 24, 40, 0.4); background-clip: padding-box; }
 *::-webkit-scrollbar-corner { background: transparent; }
+
+/* ── Skeleton shimmer (loading placeholders) ─────────────────────────── */
+.iu-skeleton {
+  background: linear-gradient(90deg,
+    var(--color-surface-muted) 25%, var(--color-border) 37%, var(--color-surface-muted) 63%);
+  background-size: 400% 100%;
+  animation: iu-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes iu-shimmer { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+@media (prefers-reduced-motion: reduce) { .iu-skeleton { animation: none; } }

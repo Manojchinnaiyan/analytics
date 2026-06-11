@@ -2,7 +2,6 @@ import type { Metadata } from 'next'
 import { IBM_Plex_Sans, IBM_Plex_Mono } from 'next/font/google'
 import './globals.css'
 import { Providers } from '@/components/layout/Providers'
-import { Analytics } from '@/components/Analytics'
 import { brand } from '@/config/brand'
 
 const ibmPlexSans = IBM_Plex_Sans({
@@ -28,7 +27,6 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en" className={`${ibmPlexSans.variable} ${ibmPlexMono.variable}`}>
       <body>
-        <Analytics />
         <Providers>{children}</Providers>
       </body>
     </html>

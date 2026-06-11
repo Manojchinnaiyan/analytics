@@ -9,6 +9,7 @@ import { api } from '@/lib/api'
 import { useProjectStore } from '@/stores/project'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card } from '@/components/ui/Card'
+import { Skeleton } from '@/components/ui/Skeleton'
 import { SegmentationChart } from '@/components/charts/SegmentationChart'
 import { rangeFromDays } from '@/components/ui/DateRangePicker'
 
@@ -52,7 +53,7 @@ function ChartTile({ chart, onDelete }: { chart: SavedChart; onDelete: () => voi
         </div>
       </div>
       {isLoading
-        ? <div className="h-80 flex items-center justify-center type-body-13 text-[var(--color-text-subtle)]">Loading…</div>
+        ? <div className="h-80 p-1"><Skeleton className="h-full w-full rounded-lg" /></div>
         : <div className="h-80 min-w-0"><SegmentationChart data={data?.data ?? []} metric={cfg.metric ?? 'Events'} /></div>}
     </Card>
   )
@@ -136,7 +137,11 @@ export default function DashboardsPage() {
       <PageHeader title="Dashboards" subtitle="Your saved charts, all in one place" actions={<ShareDashboard projectId={projectId} />} />
 
       {isLoading ? (
-        <Card><div className="h-40 flex items-center justify-center type-body-15 text-[var(--color-text-subtle)]">Loading…</div></Card>
+        <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Card key={i}><Skeleton className="h-4 w-32 mb-3" /><Skeleton className="h-80 w-full rounded-lg" /></Card>
+          ))}
+        </div>
       ) : charts.length === 0 ? (
         <Card>
           <div className="py-12 text-center">

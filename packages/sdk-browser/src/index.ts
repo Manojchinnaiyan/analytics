@@ -13,6 +13,11 @@ export function init(config: SDKConfig): InspectUserClient | null {
   if (typeof window === 'undefined' || typeof document === 'undefined') {
     return null
   }
+  // Idempotent: re-mounting the analytics component (React route changes) must
+  // not spin up a second client / session.
+  if (_instance) {
+    return _instance
+  }
   _instance = new InspectUserClient(config)
   return _instance
 }

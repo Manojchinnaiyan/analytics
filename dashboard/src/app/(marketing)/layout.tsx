@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { MarketingNav } from '@/components/marketing/MarketingNav'
 import { Logo } from '@/components/Logo'
+import { Analytics } from '@/components/Analytics'
 import { brand } from '@/config/brand'
 
 const SITE = process.env.NEXT_PUBLIC_APP_URL ?? 'https://inspectuser.com'
@@ -44,6 +45,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
   }
   return (
     <div className="bg-white text-[var(--color-text)] antialiased overflow-x-clip">
+      <Analytics />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <MarketingNav />
       <main>{children}</main>

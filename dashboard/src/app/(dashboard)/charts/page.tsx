@@ -11,6 +11,7 @@ import { useProjectStore } from '@/stores/project'
 import { useTopEvents } from '@/hooks/useTopEvents'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card } from '@/components/ui/Card'
+import { Skeleton } from '@/components/ui/Skeleton'
 import { Select } from '@/components/ui/Select'
 import { DateRangePicker, rangeFromDays } from '@/components/ui/DateRangePicker'
 import { FilterBar, stripFilters } from '@/components/FilterBar'
@@ -210,7 +211,7 @@ function ChartsInner() {
         </div>
 
         {isLoading
-          ? <div className="h-80 flex items-center justify-center type-body-15 text-[var(--color-text-subtle)]">Loading…</div>
+          ? <div className="h-80 p-1"><Skeleton className="h-full w-full rounded-lg" /></div>
           : <SegmentationChart data={data?.data ?? []} metric={metricLabel} compareData={compareOn ? data?.compare_data : undefined} annotations={annotations} />
         }
       </Card>
