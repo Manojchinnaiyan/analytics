@@ -70,7 +70,7 @@ export default function HomePage() {
             {brand.name} unifies product analytics, session replay and revenue-by-source attribution in one blazing-fast platform — priced simply by events. Stop guessing. Start growing.
           </Reveal>
           <Reveal as="div" delay={220} className="mt-8 flex flex-wrap items-center justify-center gap-3">
-            <a href="/signup" className="group inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[var(--color-brand)] text-white text-[15px] font-medium shadow-lg shadow-[rgba(0,82,242,.22)] hover:bg-[var(--color-brand-hover)] transition-colors">
+            <a href="/signup" data-iu-event="Get Started Clicked" data-iu-location="hero" className="group inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[var(--color-brand)] text-white text-[15px] font-medium shadow-lg shadow-[rgba(0,82,242,.22)] hover:bg-[var(--color-brand-hover)] transition-colors">
               Start free <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
             </a>
             <a href="/features" className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-[var(--color-border)] bg-white text-[15px] font-medium text-[var(--color-text)] hover:border-[var(--color-brand)] transition-colors">

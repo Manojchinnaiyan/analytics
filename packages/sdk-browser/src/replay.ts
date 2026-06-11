@@ -48,15 +48,9 @@ export function startSessionReplay(cfg: ReplayConfig): void {
 
   const begin = () => {
     let buf: unknown[] = []
-    record({
-      emit(event) { buf.push(event) },
-      maskAllInputs: cfg.maskAllInputs ?? true,
-      maskTextSelector: cfg.maskTextSelector ?? '.mask',
-      blockSelector: cfg.blockSelector ?? '.no-record',
-      // Throttle high-frequency signals so payloads stay small.
-      sampling: { mousemove: 50, scroll: 150, input: 'last' },
-    })
 
+    // flush() is defined BEFORE record() because rrweb emits the initial full
+    // snapshot synchronously during record(), and emit() flushes it right away.
     const flush = (useBeacon: boolean) => {
       if (!buf.length) return
       const body = JSON.stringify({
@@ -68,13 +62,16 @@ export function startSessionReplay(cfg: ReplayConfig): void {
       buf = []
       try {
         if (useBeacon && navigator.sendBeacon) {
+          // Page is unloading: best-effort beacon (≤64KB). The full snapshot was
+          // already uploaded on capture, so this only carries small tails.
           navigator.sendBeacon(endpoint, new Blob([body], { type: 'application/json' }))
         } else {
+          // NORMAL fetch (no keepalive) — keepalive caps the body at ~64KB, which
+          // silently drops large full snapshots. Without it there's no cap.
           fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body,
-            keepalive: true,
           }).catch(() => {})
         }
       } catch {
@@ -82,14 +79,38 @@ export function startSessionReplay(cfg: ReplayConfig): void {
       }
     }
 
+    record({
+      emit(event) {
+        buf.push(event)
+        // Full snapshot (type 2) is large AND critical — upload it immediately so
+        // a quick navigation can't drop it before the periodic flush.
+        if ((event as { type?: number }).type === 2) flush(false)
+      },
+      maskAllInputs: cfg.maskAllInputs ?? true,
+      maskTextSelector: cfg.maskTextSelector ?? '.mask',
+      blockSelector: cfg.blockSelector ?? '.no-record',
+      // Throttle high-frequency signals so payloads stay small.
+      sampling: { mousemove: 50, scroll: 150, input: 'last' },
+    })
+
     setInterval(() => flush(false), FLUSH_INTERVAL_MS)
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) flush(true)
     })
   }
 
-  // Defer to idle so capturing never competes with initial page render.
-  const ric = (window as unknown as { requestIdleCallback?: (cb: () => void) => void }).requestIdleCallback
-  if (ric) ric(begin)
-  else setTimeout(begin, 1)
+  // Skip replay entirely on data-saver mode or very slow (2g) connections — the
+  // recorder's CPU/network cost isn't worth it for those users.
+  const conn = (navigator as unknown as { connection?: { saveData?: boolean; effectiveType?: string } }).connection
+  if (conn && (conn.saveData || /(^|-)2g$/.test(conn.effectiveType || ''))) return
+
+  // Start only AFTER the page has loaded and the browser is idle, so the heavy
+  // initial DOM serialization never competes with first paint / LCP.
+  const schedule = () => {
+    const ric = (window as unknown as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => void }).requestIdleCallback
+    if (ric) ric(begin, { timeout: 3000 })
+    else setTimeout(begin, 1200)
+  }
+  if (document.readyState === 'complete') schedule()
+  else window.addEventListener('load', schedule, { once: true })
 }

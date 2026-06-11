@@ -64,7 +64,7 @@ export default function ReplayPlayerPage({ params }: { params: Promise<{ session
       const availH = Math.min(window.innerHeight * 0.66, 760)
       const scale = Math.min(availW / recW, availH / recH, 1)
       wrapper.style.transform = `scale(${scale})`
-      wrapper.style.transformOrigin = 'top center'
+      wrapper.style.transformOrigin = 'top left'
       target.style.height = `${Math.round(recH * scale)}px`
     }
 

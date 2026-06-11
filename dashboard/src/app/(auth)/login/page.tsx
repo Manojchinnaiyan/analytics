@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowRight } from 'lucide-react'
+import { track, identify } from '@/lib/inspectuser.mjs'
 import { authApi, saveToken } from '@/lib/auth'
 import { useProjectStore } from '@/stores/project'
 import { AuthShell } from '@/components/marketing/AuthShell'
@@ -38,6 +39,8 @@ export default function LoginPage() {
         projectId: res.project_id ?? '', apiKey: res.api_key ?? '', orgId: res.org_id,
         userName: res.name ?? '', email: res.email ?? email, projectName: res.project_name ?? '',
       })
+      identify(res.user_id, { email: res.email ?? email })
+      track('Logged In', { method: 'password' })
       router.push('/overview')
     } catch {
       setError('Invalid email or password')

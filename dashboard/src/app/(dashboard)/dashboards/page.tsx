@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Trash2, LayoutDashboard, Pencil, Share2, Globe2, Copy, Check, Lock } from 'lucide-react'
+import { track } from '@/lib/inspectuser.mjs'
 import { api } from '@/lib/api'
 import { useProjectStore } from '@/stores/project'
 import { PageHeader } from '@/components/ui/PageHeader'
@@ -72,7 +73,7 @@ function ShareDashboard({ projectId }: { projectId: string }) {
 
   async function enable() {
     setLoading(true)
-    try { const r = await api.enableDashboardShare(projectId); setToken(r.token) } finally { setLoading(false) }
+    try { const r = await api.enableDashboardShare(projectId); setToken(r.token); track('Public Dashboard Enabled') } finally { setLoading(false) }
   }
   async function disable() {
     setLoading(true)

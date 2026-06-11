@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowRight } from 'lucide-react'
+import { track, identify } from '@/lib/inspectuser.mjs'
 import { authApi, saveToken } from '@/lib/auth'
 import { useProjectStore } from '@/stores/project'
 import { AuthShell } from '@/components/marketing/AuthShell'
@@ -43,6 +44,8 @@ export default function SignupPage() {
         userName: res.name ?? form.name, email: res.email ?? form.email,
         projectName: res.project_name ?? (form.org_name + ' (Default)'),
       })
+      identify(res.user_id, { email: res.email ?? form.email, name: form.name, org: form.org_name })
+      track('Signed Up', { org: form.org_name })
       router.push('/welcome')
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error

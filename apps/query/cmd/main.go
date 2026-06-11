@@ -313,6 +313,9 @@ func main() {
 	app := fiber.New(fiber.Config{
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 60 * time.Second,
+		// Session-replay full snapshots of heavy pages can be large; default 4MB
+		// would reject them. Allow up to 32MB per /replay batch.
+		BodyLimit: 32 * 1024 * 1024,
 	})
 
 	app.Use(recover.New())
