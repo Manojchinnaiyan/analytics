@@ -56,7 +56,10 @@ func (h *AttributionHandler) Attribution(c fiber.Ctx) error {
 	if model == "last_touch" {
 		agg = "argMaxIf"
 	}
-	const isTouch = `(utm_source != '' OR utm_medium != '' OR referrer != '')`
+	// A real acquisition "touch" = a utm tag OR an EXTERNAL referrer. Internal
+	// navigation sets the referrer column to our own domain, which must NOT count
+	// as a touch — otherwise it wins first-touch and buries the real source.
+	const isTouch = `(utm_source != '' OR utm_medium != '' OR utm_campaign != '' OR (referrer != '' AND domain(referrer) != JSONExtractString(properties,'domain')))`
 
 	rows, err := h.ch.Query(c.Context(), fmt.Sprintf(`
 		SELECT
@@ -136,7 +139,7 @@ func (h *AttributionHandler) multiTouch(c fiber.Ctx, projectID, conversion, mode
 		       toUInt8(event_type = ?) AS is_conv
 		FROM inspectuser.events
 		WHERE project_id = ?
-		  AND (utm_source != '' OR utm_medium != '' OR referrer != '' OR event_type = ?)
+		  AND (utm_source != '' OR utm_medium != '' OR (referrer != '' AND domain(referrer) != JSONExtractString(properties,'domain')) OR event_type = ?)
 		ORDER BY id, t
 	`, conversion, projectID, conversion)
 	if err != nil {
