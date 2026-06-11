@@ -143,7 +143,7 @@ export default function ReplayPlayerPage({ params }: { params: Promise<{ session
             <div ref={ref} className="rr-player-wrap w-full overflow-hidden bg-[#fafafa] rounded-lg border border-[var(--color-border)]" />
 
             {/* Controls */}
-            <div className="mt-3 flex items-center gap-3">
+            <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
               <button onClick={toggle} aria-label={playing ? 'Pause' : 'Play'} className="grid place-items-center h-9 w-9 rounded-full bg-[#0052F2] text-white hover:bg-[#0043c4] transition-colors flex-shrink-0">
                 {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
               </button>
@@ -155,12 +155,12 @@ export default function ReplayPlayerPage({ params }: { params: Promise<{ session
               <input
                 type="range" min={0} max={total || 1} value={Math.min(cur, total)} step={100}
                 onChange={(e) => seek(Number(e.currentTarget.value))}
-                className="flex-1 accent-[#0052F2] cursor-pointer"
+                className="flex-1 min-w-[120px] accent-[#0052F2] cursor-pointer"
                 aria-label="Seek"
               />
               <span className="type-body-12-400 text-[var(--color-text-subtle)] tabular-nums w-10">{fmt(total)}</span>
 
-              <div className="flex items-center gap-1 flex-shrink-0">
+              <div className="flex items-center gap-1 flex-shrink-0 ml-auto">
                 {SPEEDS.map(s => (
                   <button key={s} onClick={() => changeSpeed(s)}
                     className={`px-2 py-1 rounded-md type-body-12-400 transition-colors ${speed === s ? 'bg-[#0052F2] text-white' : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-muted)]'}`}>

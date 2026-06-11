@@ -111,7 +111,8 @@ export default function ReplayPage() {
             <p className="type-body-13 text-[var(--color-text-subtle)] mt-1">Add the recorder above and sampled sessions will appear here.</p>
           </div>
         ) : (
-          <table className="w-full">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[560px]">
             <thead>
               <tr className="border-b border-[var(--color-border)] type-caption text-[var(--color-text-muted)]">
                 <th className="text-left px-5 py-3">Session</th>
@@ -138,6 +139,7 @@ export default function ReplayPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </Card>
     </div>

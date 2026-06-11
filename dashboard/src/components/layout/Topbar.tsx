@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronDown, LogOut, Settings, FolderKanban, User, Plus, Check } from 'lucide-react'
+import { ChevronDown, LogOut, Settings, FolderKanban, User, Plus, Check, Menu } from 'lucide-react'
 import { useProjectStore } from '@/stores/project'
 import { useLogout } from '@/hooks/useAuth'
 import { api } from '@/lib/api'
@@ -44,13 +44,13 @@ function ProjectSwitcher() {
 
   return (
     <div className="relative" ref={ref}>
-      <button onClick={() => setOpen(o => !o)} className="flex items-center gap-2 px-3 py-1.5 rounded-md border border-[var(--color-border)] bg-white hover:bg-[var(--color-surface-muted)] transition-colors">
-        <FolderKanban className="h-4 w-4 text-[#0052F2]" />
-        <span className="type-caption text-[var(--color-text)] max-w-[180px] truncate">{projectName || 'My Project'}</span>
-        <ChevronDown className={`h-4 w-4 text-[var(--color-text-subtle)] transition-transform ${open ? 'rotate-180' : ''}`} />
+      <button onClick={() => setOpen(o => !o)} className="flex items-center gap-2 min-w-0 px-2.5 sm:px-3 py-1.5 rounded-md border border-[var(--color-border)] bg-white hover:bg-[var(--color-surface-muted)] transition-colors">
+        <FolderKanban className="h-4 w-4 text-[#0052F2] flex-shrink-0" />
+        <span className="type-caption text-[var(--color-text)] max-w-[110px] sm:max-w-[180px] truncate">{projectName || 'My Project'}</span>
+        <ChevronDown className={`h-4 w-4 text-[var(--color-text-subtle)] flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
-        <div className="absolute left-0 mt-2 w-64 bg-white border border-[var(--color-border)] rounded-lg shadow-lg overflow-hidden z-50">
+        <div className="absolute left-0 mt-2 w-64 max-w-[calc(100vw-1.5rem)] bg-white border border-[var(--color-border)] rounded-lg shadow-lg overflow-hidden z-50">
           <div className="py-1.5 max-h-72 overflow-y-auto">
             {projects.map(p => (
               <button key={p.project_id} onClick={() => pick(p)} className="w-full flex items-center justify-between gap-2 px-4 py-2 type-small-body text-left hover:bg-[var(--color-surface-muted)] transition-colors">
@@ -70,7 +70,7 @@ function ProjectSwitcher() {
   )
 }
 
-export function Topbar() {
+export function Topbar({ onMenuClick }: { onMenuClick?: () => void }) {
   const userName = useProjectStore(s => s.userName)
   const email = useProjectStore(s => s.email)
   const logout = useLogout()
@@ -89,20 +89,29 @@ export function Topbar() {
     .split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
 
   return (
-    <header className="h-14 bg-white border-b border-[var(--color-border)] flex items-center justify-between px-6 flex-shrink-0">
-      <ProjectSwitcher />
+    <header className="h-14 bg-white border-b border-[var(--color-border)] flex items-center justify-between gap-2 px-4 sm:px-6 flex-shrink-0">
+      <div className="flex items-center gap-2 min-w-0">
+        <button
+          onClick={onMenuClick}
+          aria-label="Open menu"
+          className="lg:hidden grid place-items-center h-9 w-9 rounded-md text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] flex-shrink-0"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+        <ProjectSwitcher />
+      </div>
 
       {/* Account */}
       <div className="relative" ref={ref}>
         <button
           onClick={() => setOpen(o => !o)}
-          className="flex items-center gap-2 pl-2 pr-2.5 py-1.5 rounded-md hover:bg-[var(--color-surface-muted)] transition-colors"
+          className="flex items-center gap-2 pl-1.5 pr-1.5 sm:pl-2 sm:pr-2.5 py-1.5 rounded-md hover:bg-[var(--color-surface-muted)] transition-colors flex-shrink-0"
         >
-          <div className="w-7 h-7 rounded-full bg-[#0052F2] text-white flex items-center justify-center type-small-10">
+          <div className="w-7 h-7 rounded-full bg-[#0052F2] text-white flex items-center justify-center type-small-10 flex-shrink-0">
             {initials}
           </div>
-          <span className="type-caption text-[var(--color-text)] max-w-[140px] truncate">{userName || email || 'Account'}</span>
-          <ChevronDown className={`h-4 w-4 text-[var(--color-text-subtle)] transition-transform ${open ? 'rotate-180' : ''}`} />
+          <span className="hidden sm:block type-caption text-[var(--color-text)] max-w-[140px] truncate">{userName || email || 'Account'}</span>
+          <ChevronDown className={`hidden sm:block h-4 w-4 text-[var(--color-text-subtle)] transition-transform ${open ? 'rotate-180' : ''}`} />
         </button>
 
         {open && (

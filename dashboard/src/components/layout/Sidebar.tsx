@@ -73,7 +73,7 @@ const groups: Group[] = [
   },
 ]
 
-export function Sidebar() {
+export function Sidebar({ mobileOpen = false, onClose }: { mobileOpen?: boolean; onClose?: () => void }) {
   const pathname = usePathname()
   const { pinned, togglePinned, collapsedGroups, toggleGroup } = useUIStore()
   const [hovering, setHovering] = useState(false)
@@ -85,7 +85,8 @@ export function Sidebar() {
     .filter(g => g.items.length > 0)
 
   // Rail (icons-only) when collapsed and not hovered. Hover temporarily expands.
-  const expanded = pinned || hovering
+  // As a mobile drawer it's always full-width with labels.
+  const expanded = mobileOpen || pinned || hovering
 
   // Collapsing should take effect immediately even while the cursor is over the bar.
   const handleToggle = () => {
@@ -101,8 +102,11 @@ export function Sidebar() {
       onMouseEnter={() => setHovering(true)}
       onMouseLeave={() => setHovering(false)}
       className={clsx(
-        'bg-white border-r border-[var(--color-border)] flex flex-col flex-shrink-0 transition-[width] duration-200 ease-out',
-        expanded ? 'w-[244px]' : 'w-[60px]',
+        'bg-white border-r border-[var(--color-border)] flex flex-col flex-shrink-0',
+        // Mobile: fixed slide-out drawer (always full width). Desktop: in-flow, width animates.
+        'fixed lg:static inset-y-0 left-0 z-40 w-[244px] transition-transform duration-200 ease-out lg:transition-[width]',
+        mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
+        expanded ? 'lg:w-[244px]' : 'lg:w-[60px]',
       )}
     >
       {/* Header */}
@@ -151,6 +155,7 @@ export function Sidebar() {
                       <Link
                         key={href}
                         href={href}
+                        onClick={onClose}
                         title={!expanded ? label : undefined}
                         className={clsx(
                           'flex items-center rounded-md transition-colors',

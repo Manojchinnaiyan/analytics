@@ -168,12 +168,12 @@ export default function FunnelsPage() {
 
       {/* Tabs */}
       <Card>
-        <div className="flex gap-1 border-b border-[var(--color-border)] mb-5 -mt-1">
+        <div className="flex gap-1 border-b border-[var(--color-border)] mb-5 -mt-1 overflow-x-auto">
           {TABS.map(t => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`px-4 py-2 type-small-body border-b-2 -mb-px transition-colors ${tab === t.id ? 'border-[#0052F2] text-[#0052F2]' : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}`}
+              className={`px-4 py-2 type-small-body border-b-2 -mb-px transition-colors whitespace-nowrap flex-shrink-0 ${tab === t.id ? 'border-[#0052F2] text-[#0052F2]' : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text)]'}`}
             >
               {t.label}
             </button>

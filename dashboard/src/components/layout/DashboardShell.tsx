@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { Topbar } from '@/components/layout/Topbar'
 import { useRequireAuth } from '@/hooks/useAuth'
@@ -12,6 +12,7 @@ import { Loader2 } from 'lucide-react'
 export function DashboardShell({ children }: Readonly<{ children: React.ReactNode }>) {
   const ready = useRequireAuth()
   const hydrated = useRef(false)
+  const [mobileNav, setMobileNav] = useState(false)
 
   // Hydrate the current user's project + API key from the server ONCE per load.
   // Only writes to the store when a value actually changed, to avoid re-render churn.
@@ -53,10 +54,17 @@ export function DashboardShell({ children }: Readonly<{ children: React.ReactNod
 
   return (
     <div className="flex h-screen overflow-hidden bg-[var(--color-surface-muted)]">
-      <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Topbar />
-        <main className="flex-1 overflow-auto px-6 py-6">{children}</main>
+      <Sidebar mobileOpen={mobileNav} onClose={() => setMobileNav(false)} />
+      {mobileNav && (
+        <button
+          aria-label="Close menu"
+          onClick={() => setMobileNav(false)}
+          className="fixed inset-0 z-30 bg-black/40 lg:hidden"
+        />
+      )}
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        <Topbar onMenuClick={() => setMobileNav(true)} />
+        <main className="flex-1 overflow-auto px-3 py-4 sm:px-6 sm:py-6">{children}</main>
       </div>
     </div>
   )

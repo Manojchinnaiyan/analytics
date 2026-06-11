@@ -20,7 +20,9 @@ func GenerateToken(userID, orgID, role, secret string) (string, error) {
 		OrgID:  orgID,
 		Role:   role,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			// 30-day session so closing/reopening the tab keeps the user logged in.
+			// The dashboard rolls it forward on every load (POST /v1/auth/refresh).
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(30 * 24 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 	}

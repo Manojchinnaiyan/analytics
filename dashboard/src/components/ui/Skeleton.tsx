@@ -13,24 +13,23 @@ export function Skeleton({ className }: { className?: string }) {
 export function PageSkeleton() {
   return (
     <div className="space-y-5">
+      {/* header: title + subtitle + action */}
       <div className="flex items-start justify-between gap-4">
-        <div className="space-y-2">
+        <div className="space-y-2.5">
           <Skeleton className="h-7 w-56" />
           <Skeleton className="h-4 w-80" />
         </div>
-        <Skeleton className="h-9 w-32" />
+        <Skeleton className="h-9 w-32 rounded-lg" />
       </div>
-      <div className="flex flex-wrap gap-3">
-        <Skeleton className="h-9 w-44" />
-        <Skeleton className="h-9 w-36" />
-        <Skeleton className="h-9 w-28" />
-      </div>
+      {/* KPI cards */}
       <StatsSkeleton />
-      <div className="rounded-xl border border-[var(--color-border)] p-5">
-        <ChartSkeleton height="h-80" />
-      </div>
-      <div className="rounded-xl border border-[var(--color-border)] p-5">
-        <TableSkeleton rows={6} />
+      {/* main content (chart / table area) */}
+      <div className="rounded-xl border border-[var(--color-border)] bg-white p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-4 w-44" />
+          <Skeleton className="h-8 w-28 rounded-lg" />
+        </div>
+        <Skeleton className="h-80 w-full rounded-lg" />
       </div>
     </div>
   )

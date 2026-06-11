@@ -67,7 +67,8 @@ export default function UsersPage() {
             <p className="type-body-15 text-[var(--color-text-subtle)]">{search ? 'No users match your search.' : 'No visitors yet — send some events to see them here.'}</p>
           </div>
         ) : (
-          <table className="w-full">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px]">
             <thead>
               <tr className="border-b border-white/50">
                 <th className="text-left px-5 py-3 type-caption text-[var(--color-text-muted)]">User</th>
@@ -107,6 +108,7 @@ export default function UsersPage() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </Card>
     </div>
