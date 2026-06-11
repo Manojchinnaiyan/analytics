@@ -56,22 +56,23 @@ func (h *AttributionHandler) Attribution(c fiber.Ctx) error {
 	if model == "last_touch" {
 		agg = "argMaxIf"
 	}
-	// A real acquisition "touch" = a utm tag OR an EXTERNAL referrer. Internal
-	// navigation sets the referrer column to our own domain, which must NOT count
-	// as a touch — otherwise it wins first-touch and buries the real source.
-	const isTouch = `(utm_source != '' OR utm_medium != '' OR utm_campaign != '' OR (referrer != '' AND domain(referrer) != JSONExtractString(properties,'domain')))`
+	// Attribute each dimension from its OWN first/last NON-EMPTY value, so a later
+	// source (e.g. the same visitor's X click after a WhatsApp click) surfaces under
+	// last-touch instead of being hidden behind a referrer-only touch. Internal
+	// navigation (own-domain referrer) never counts as a referrer touch.
+	const extRef = `referrer != '' AND domain(referrer) != JSONExtractString(properties,'domain')`
 
 	rows, err := h.ch.Query(c.Context(), fmt.Sprintf(`
 		SELECT
-			%[1]s(utm_source, event_time, %[2]s)   AS t_source,
-			%[1]s(utm_medium, event_time, %[2]s)   AS t_medium,
-			%[1]s(utm_campaign, event_time, %[2]s) AS t_campaign,
-			%[1]s(referrer, event_time, %[2]s)     AS t_referrer,
+			%[1]s(utm_source, event_time, utm_source != '')     AS t_source,
+			%[1]s(utm_medium, event_time, utm_medium != '')     AS t_medium,
+			%[1]s(utm_campaign, event_time, utm_campaign != '') AS t_campaign,
+			%[1]s(referrer, event_time, %[2]s)                  AS t_referrer,
 			maxIf(toInt8(1), event_type = ?) AS converted
 		FROM inspectuser.events
 		WHERE project_id = ?
 		GROUP BY if(user_id != '', user_id, device_id)
-	`, agg, isTouch), conversion, projectID)
+	`, agg, extRef), conversion, projectID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
