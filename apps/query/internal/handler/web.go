@@ -277,14 +277,21 @@ func (h *ProductHandler) sessionEdgePages(ctx context.Context, projectID, since,
 }
 
 // topReferrers: acquisition sources by SESSION, from each session's entry
-// pageview. Empty / same-domain referrers count as Direct.
+// pageview. utm_source wins (social/campaign traffic like X & LinkedIn strips the
+// HTTP referrer, so referrer-only attribution misses it); then external referrer
+// domain; otherwise Direct.
 func (h *ProductHandler) topReferrers(ctx context.Context, projectID, since, flt string) []map[string]any {
 	out := []map[string]any{}
 	rows, err := h.ch.Query(ctx, `
 		SELECT source, count() AS sessions FROM (
-			SELECT if(entry_ref = '' OR domain(entry_ref) = entry_dom, 'Direct', domain(entry_ref)) AS source
+			SELECT multiIf(
+			           entry_utm != '', entry_utm,
+			           entry_ref = '' OR domain(entry_ref) = entry_dom, 'Direct',
+			           domain(entry_ref)
+			       ) AS source
 			FROM (
 				SELECT session_id,
+				       argMinIf(utm_source, event_time, utm_source != '') AS entry_utm,
 				       argMin(JSONExtractString(properties, 'referrer'), event_time) AS entry_ref,
 				       argMin(JSONExtractString(properties, 'domain'),   event_time) AS entry_dom
 				FROM inspectuser.events

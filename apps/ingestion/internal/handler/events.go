@@ -40,6 +40,20 @@ func (h *EventHandler) resolveLinkCode(ctx context.Context, e *validator.Event) 
 	if e.UTMCampaign == "" {
 		e.UTMCampaign = cfg.UTMCampaign
 	}
+
+	// Count the click once per visitor session — a single landing fires several
+	// events that all carry the same link code, so dedupe before incrementing the
+	// counter the Smart Links page reads (linkclicks:<code>).
+	dedup := e.SessionID
+	if dedup == "" {
+		dedup = e.DeviceID
+	}
+	if dedup == "" {
+		dedup = e.InsertID
+	}
+	if ok, serr := h.rdb.SetNX(ctx, "linkseen:"+e.LinkCode+":"+dedup, 1, 24*time.Hour).Result(); serr == nil && ok {
+		h.rdb.Incr(ctx, "linkclicks:"+e.LinkCode)
+	}
 }
 
 type EventHandler struct {
