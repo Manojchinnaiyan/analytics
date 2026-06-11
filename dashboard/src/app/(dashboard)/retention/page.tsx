@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { Skeleton, TableSkeleton } from '@/components/ui/Skeleton'
 import { useQuery } from '@tanstack/react-query'
 import { RetentionChart } from '@/components/charts/RetentionChart'
 import { EventSelect } from '@/components/EventSelect'
@@ -103,7 +104,7 @@ export default function RetentionPage() {
 
         <div className="pt-5 border-t border-[var(--color-border)]">
           {isLoading
-            ? <div className="h-40 flex items-center justify-center type-body-15 text-[var(--color-text-subtle)]">Loading…</div>
+            ? <div className="h-40 p-1"><Skeleton className="h-full w-full rounded-lg" /></div>
             : <RetentionChart data={data?.data ?? []} unit={unitLabel} />
           }
         </div>

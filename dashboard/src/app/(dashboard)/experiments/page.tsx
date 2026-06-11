@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Skeleton, TableSkeleton } from '@/components/ui/Skeleton'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, Trash2, FlaskConical, Trophy, BarChart3 } from 'lucide-react'
 import { api } from '@/lib/api'
@@ -106,7 +107,7 @@ function ResultsPanel({ flag }: { flag: Flag }) {
       {!goal ? (
         <p className="type-body-13 text-[var(--color-text-subtle)]">Pick a goal event to measure conversion per variant.</p>
       ) : isLoading ? (
-        <p className="type-body-13 text-[var(--color-text-subtle)]">Loading…</p>
+        <div className="space-y-2"><Skeleton className="h-4 w-3/4" /><Skeleton className="h-4 w-1/2" /></div>
       ) : variants.length === 0 ? (
         <p className="type-body-13 text-[var(--color-text-subtle)]">No exposures yet — call the flag from your SDK so users get assigned.</p>
       ) : (
@@ -256,7 +257,7 @@ export default function ExperimentsPage() {
 
       <Card padding={false}>
         {isLoading ? (
-          <div className="py-14 text-center type-body-15 text-[var(--color-text-subtle)]">Loading…</div>
+          <div className="px-1 py-2"><TableSkeleton rows={6} /></div>
         ) : flags.length === 0 ? (
           <div className="py-14 text-center">
             <div className="inline-flex p-3 rounded-lg bg-[#EEF3FD] mb-3"><FlaskConical className="h-6 w-6 text-[#0052F2]" /></div>

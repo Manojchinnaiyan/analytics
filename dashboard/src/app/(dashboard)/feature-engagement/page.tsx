@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Skeleton, TableSkeleton } from '@/components/ui/Skeleton'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   ScatterChart, Scatter, XAxis, YAxis, ZAxis, CartesianGrid,
@@ -126,7 +127,7 @@ function FeatureRetention({ projectId, days, filters, options }: {
         Return rate of users who adopted <b>{sel || '—'}</b> on their first day vs those who didn’t (over {days}d).
       </p>
       {isLoading ? (
-        <div className="py-8 text-center type-body-13 text-[var(--color-text-subtle)]">Loading…</div>
+        <div className="px-1 py-2"><TableSkeleton rows={6} /></div>
       ) : (
         <div className="space-y-4">
           <Bar label="Adopters" g={a} color="#0052F2" />
@@ -310,7 +311,7 @@ export default function FeatureEngagementPage() {
         </div>
 
         {isLoading ? (
-          <div className="h-[360px] flex items-center justify-center type-body-15 text-[var(--color-text-subtle)]">Loading…</div>
+          <div className="h-[360px] p-1"><Skeleton className="h-full w-full rounded-lg" /></div>
         ) : points.length === 0 ? (
           <div className="h-[360px] flex items-center justify-center type-body-15 text-[var(--color-text-subtle)]">No events in this window.</div>
         ) : (
@@ -357,7 +358,7 @@ export default function FeatureEngagementPage() {
       {/* Detail table */}
       <Card padding={false} className="min-w-0 overflow-x-auto">
         {isLoading ? (
-          <div className="py-16 text-center type-body-15 text-[var(--color-text-subtle)]">Loading…</div>
+          <div className="px-1 py-2"><TableSkeleton rows={6} /></div>
         ) : points.length === 0 ? (
           <div className="py-16 text-center type-body-15 text-[var(--color-text-subtle)]">No events in the last {days} days.</div>
         ) : (

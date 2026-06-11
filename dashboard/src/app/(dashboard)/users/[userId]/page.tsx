@@ -1,6 +1,7 @@
 'use client'
 
 import { use, useState } from 'react'
+import { Skeleton, TableSkeleton } from '@/components/ui/Skeleton'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import Link from 'next/link'
 import { ArrowLeft, Zap, Activity, Layers, Calendar, Globe, Monitor, Download, Trash2, ShieldAlert } from 'lucide-react'
@@ -109,7 +110,7 @@ export default function UserProfilePage({ params }: { params: Promise<{ userId: 
       </Link>
 
       {isLoading ? (
-        <div className="py-16 text-center type-body-15 text-[#94a3b8]">Loading…</div>
+        <div className="px-1 py-2"><TableSkeleton rows={6} /></div>
       ) : isError || !data ? (
         <div className="glass rounded-lg py-16 text-center">
           <p className="type-body-15 text-[#94a3b8]">User not found or has no events.</p>

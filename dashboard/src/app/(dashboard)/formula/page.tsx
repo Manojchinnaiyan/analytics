@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Skeleton, TableSkeleton } from '@/components/ui/Skeleton'
 import { useQuery } from '@tanstack/react-query'
 import { Sigma } from 'lucide-react'
 import { SegmentationChart } from '@/components/charts/SegmentationChart'
@@ -106,7 +107,7 @@ export default function FormulaPage() {
         {!ready
           ? <div className="h-80 flex items-center justify-center type-body-15 text-[var(--color-text-subtle)]">Pick events for A and B above.</div>
           : isLoading
-            ? <div className="h-80 flex items-center justify-center type-body-15 text-[var(--color-text-subtle)]">Loading…</div>
+            ? <div className="h-80 p-1"><Skeleton className="h-full w-full rounded-lg" /></div>
             : <SegmentationChart data={combined} metric={label} />}
       </Card>
     </div>

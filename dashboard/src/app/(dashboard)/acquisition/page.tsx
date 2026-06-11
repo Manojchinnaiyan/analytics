@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { Skeleton, TableSkeleton } from '@/components/ui/Skeleton'
 import { useQuery } from '@tanstack/react-query'
 import { Radio, Users, Target } from 'lucide-react'
 import { api } from '@/lib/api'
@@ -137,7 +138,7 @@ export default function AcquisitionPage() {
       </div>
 
       {isLoading ? (
-        <Card><div className="h-40 flex items-center justify-center type-body-15 text-[var(--color-text-subtle)]">Loading…</div></Card>
+        <Card><div className="h-40 p-1"><Skeleton className="h-full w-full rounded-lg" /></div></Card>
       ) : (
         <div className="grid lg:grid-cols-2 gap-4">
           <BreakdownTable title="Channels" rows={data?.channels ?? []} showConv={showConv} icons />

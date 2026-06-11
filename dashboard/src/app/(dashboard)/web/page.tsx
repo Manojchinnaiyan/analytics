@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Skeleton, TableSkeleton } from '@/components/ui/Skeleton'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Eye, MousePointer2, Users, LogOut, Layers, Timer, UserPlus, X, Target, Plus, Trash2 } from 'lucide-react'
 import {
@@ -341,7 +342,7 @@ export default function WebAnalyticsPage() {
           <Select value={metric} onChange={setMetric} options={METRICS.map(m => ({ value: m.value, label: m.label }))} className="w-[150px]" />
         </div>
         {isLoading ? (
-          <div className="h-64 flex items-center justify-center type-body-15 text-[var(--color-text-subtle)]">Loading…</div>
+          <div className="h-64 p-1"><Skeleton className="h-full w-full rounded-lg" /></div>
         ) : trend.length === 0 ? (
           <div className="h-64 flex items-center justify-center type-body-15 text-[var(--color-text-subtle)]">No pageviews in this range</div>
         ) : (

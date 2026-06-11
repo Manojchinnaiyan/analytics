@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { Skeleton, TableSkeleton } from '@/components/ui/Skeleton'
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { Plus, Trash2, Target, Clock, Ban } from 'lucide-react'
@@ -178,7 +179,7 @@ export default function FunnelsPage() {
         </div>
 
         {isLoading ? (
-          <div className="h-72 flex items-center justify-center type-body-15 text-[var(--color-text-subtle)]">Loading…</div>
+          <div className="h-72 p-1"><Skeleton className="h-full w-full rounded-lg" /></div>
         ) : tab === 'conversion' ? (
           <>
             <FunnelChart steps={resultSteps} />

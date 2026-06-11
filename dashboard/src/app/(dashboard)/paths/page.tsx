@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, Suspense } from 'react'
+import { Skeleton, TableSkeleton } from '@/components/ui/Skeleton'
 import { useQuery } from '@tanstack/react-query'
 import { useSearchParams } from 'next/navigation'
 import { Flag } from 'lucide-react'
@@ -86,7 +87,7 @@ function PathsInner() {
 
       <Card>
         {isLoading ? (
-          <div className="h-80 flex items-center justify-center type-body-15 text-[var(--color-text-subtle)]">Loading…</div>
+          <div className="h-80 p-1"><Skeleton className="h-full w-full rounded-lg" /></div>
         ) : total === 0 ? (
           <div className="h-80 flex items-center justify-center type-body-15 text-[var(--color-text-subtle)]">
             No users performed “{startEvent || 'this event'}” in this range.

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Skeleton, TableSkeleton } from '@/components/ui/Skeleton'
 import { useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { Search, User, ChevronRight } from 'lucide-react'
@@ -59,7 +60,7 @@ export default function UsersPage() {
         </div>
 
         {isLoading ? (
-          <div className="py-16 text-center type-body-15 text-[var(--color-text-subtle)]">Loading…</div>
+          <div className="px-1 py-2"><TableSkeleton rows={6} /></div>
         ) : users.length === 0 ? (
           <div className="py-16 text-center">
             <div className="inline-flex p-3 rounded-lg bg-[#EEF3FD] mb-3"><User className="h-6 w-6 text-[#4C85F5]" /></div>

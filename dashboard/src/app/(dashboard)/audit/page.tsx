@@ -1,6 +1,7 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
+import { Skeleton, TableSkeleton } from '@/components/ui/Skeleton'
 import { api } from '@/lib/api'
 import { useProjectStore } from '@/stores/project'
 import { PageHeader } from '@/components/ui/PageHeader'
@@ -67,7 +68,7 @@ export default function AuditPage() {
 
       <Card padding={false} className="min-w-0 overflow-x-auto">
         {isLoading ? (
-          <div className="py-16 text-center type-body-15 text-[var(--color-text-subtle)]">Loading…</div>
+          <div className="px-1 py-2"><TableSkeleton rows={6} /></div>
         ) : entries.length === 0 ? (
           <div className="py-16 text-center type-body-15 text-[var(--color-text-subtle)]">No admin actions recorded yet.</div>
         ) : (

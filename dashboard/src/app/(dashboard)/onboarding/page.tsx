@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { Skeleton, TableSkeleton } from '@/components/ui/Skeleton'
 import { useQuery } from '@tanstack/react-query'
 import { Plus, Trash2, Rocket, Users, Target, Timer } from 'lucide-react'
 import {
@@ -141,7 +142,7 @@ export default function OnboardingPage() {
       <Card>
         <h2 className="type-h3-16 text-[var(--color-text)] mb-4">Activation funnel (within {ttvDays}d of signup)</h2>
         {isLoading ? (
-          <div className="h-40 flex items-center justify-center type-body-15 text-[var(--color-text-subtle)]">Loading…</div>
+          <div className="h-40 p-1"><Skeleton className="h-full w-full rounded-lg" /></div>
         ) : result.length === 0 ? (
           <div className="h-40 flex items-center justify-center type-body-15 text-[var(--color-text-subtle)]">Pick events that exist in your project above.</div>
         ) : (

@@ -1,6 +1,7 @@
 'use client'
 
 import { use, useEffect, useRef, useState } from 'react'
+import { Skeleton, TableSkeleton } from '@/components/ui/Skeleton'
 import { useQuery } from '@tanstack/react-query'
 import Link from 'next/link'
 import { ArrowLeft, Play, Pause, RotateCcw } from 'lucide-react'
@@ -133,7 +134,7 @@ export default function ReplayPlayerPage({ params }: { params: Promise<{ session
 
       <Card>
         {isLoading ? (
-          <div className="h-96 flex items-center justify-center type-body-15 text-[var(--color-text-subtle)]">Loading recording…</div>
+          <div className="h-96 p-1"><Skeleton className="h-full w-full rounded-lg" /></div>
         ) : err ? (
           <div className="h-96 flex items-center justify-center type-body-15 text-[var(--color-text-subtle)]">{err}</div>
         ) : (
