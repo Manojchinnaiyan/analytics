@@ -27,6 +27,14 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en" className={`${ibmPlexSans.variable} ${ibmPlexMono.variable}`}>
       <body>
+        {/* Runs before the page renders: if a logged-in visitor hits a public
+            page, bounce them to the dashboard instantly — no waiting for the
+            marketing bundle to download + hydrate. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var p=location.pathname;if((p==='/'||p==='/login'||p==='/signup')&&localStorage.getItem('amp_token')){location.replace('/overview')}}catch(e){}})();`,
+          }}
+        />
         <Providers>{children}</Providers>
       </body>
     </html>
