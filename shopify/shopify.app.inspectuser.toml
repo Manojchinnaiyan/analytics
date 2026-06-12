@@ -1,0 +1,29 @@
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = "6189f91c95d0d0602b9a4b41a63732ba"
+application_url = "https://api.inspectuser.com/shopify/install"
+embedded = false
+name = "inspectuser"
+
+[access_scopes]
+# Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
+scopes = "read_customer_events,read_orders,write_pixels"
+
+[auth]
+redirect_urls = [ "https://api.inspectuser.com/shopify/callback" ]
+
+[webhooks]
+api_version = "2026-07"
+
+  [[webhooks.subscriptions]]
+  topics = [ "app/uninstalled" ]
+  uri = "https://api.inspectuser.com/shopify/webhooks/app/uninstalled"
+
+  [webhooks.privacy_compliance]
+  customer_data_request_url = "https://api.inspectuser.com/shopify/webhooks/customers/data_request"
+  customer_deletion_url     = "https://api.inspectuser.com/shopify/webhooks/customers/redact"
+  shop_deletion_url         = "https://api.inspectuser.com/shopify/webhooks/shop/redact"
+
+[build]
+include_config_on_deploy = true
+automatically_update_urls_on_dev = true

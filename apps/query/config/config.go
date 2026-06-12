@@ -28,6 +28,12 @@ type Config struct {
 	AppURL string
 	// APIURL is this service's public origin, used to build the SSO callback URL.
 	APIURL string
+	// IngestURL is the ingestion API origin the Shopify Web Pixel posts events to.
+	IngestURL string
+	// Shopify App credentials (Partner Dashboard). Empty disables the Shopify routes.
+	ShopifyAPIKey    string
+	ShopifyAPISecret string
+	ShopifyScopes    string
 }
 
 func Load() *Config {
@@ -50,6 +56,10 @@ func Load() *Config {
 	viper.SetDefault("SMTP_FROM", "InspectUser <no-reply@inspectuser.local>")
 	viper.SetDefault("APP_URL", "http://localhost:3000")
 	viper.SetDefault("API_URL", "http://localhost:4001")
+	viper.SetDefault("INGEST_URL", "http://localhost:4000")
+	viper.SetDefault("SHOPIFY_API_KEY", "")
+	viper.SetDefault("SHOPIFY_API_SECRET", "")
+	viper.SetDefault("SHOPIFY_SCOPES", "read_orders,write_pixels,read_customer_events")
 	viper.AutomaticEnv()
 
 	return &Config{
@@ -72,5 +82,9 @@ func Load() *Config {
 		SMTPFrom:           viper.GetString("SMTP_FROM"),
 		AppURL:             viper.GetString("APP_URL"),
 		APIURL:             viper.GetString("API_URL"),
+		IngestURL:          viper.GetString("INGEST_URL"),
+		ShopifyAPIKey:      viper.GetString("SHOPIFY_API_KEY"),
+		ShopifyAPISecret:   viper.GetString("SHOPIFY_API_SECRET"),
+		ShopifyScopes:      viper.GetString("SHOPIFY_SCOPES"),
 	}
 }

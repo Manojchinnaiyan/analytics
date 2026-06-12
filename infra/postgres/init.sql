@@ -95,3 +95,14 @@ CREATE TABLE IF NOT EXISTS dashboard_shares (
     name        VARCHAR(255) NOT NULL DEFAULT 'Public dashboard',
     created_at  TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Shopify App installs: one row per store, mapping the myshopify domain to the
+-- auto-provisioned org/project and holding the offline access token.
+CREATE TABLE IF NOT EXISTS shopify_installs (
+    shop            VARCHAR(255) PRIMARY KEY,
+    org_id          UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    project_id      UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    access_token    TEXT NOT NULL DEFAULT '',
+    installed_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    uninstalled_at  TIMESTAMPTZ
+);

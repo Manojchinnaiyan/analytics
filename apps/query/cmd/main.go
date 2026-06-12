@@ -488,6 +488,19 @@ func main() {
 	replayHandler := handler.NewReplayHandler(replayStore, rdb, log)
 	app.Post("/replay", replayHandler.Ingest) // api-key auth, outside the /v1 JWT prefix
 	app.Get("/public/dashboard/:token", dashboardHandler.PublicDashboard) // no-auth public read-only dashboard
+
+	// Shopify App: OAuth install + auto-provision + Web Pixel + compliance webhooks.
+	// Public routes (HMAC-verified), only mounted when app credentials are set.
+	shopifyHandler := handler.NewShopifyHandler(db, rdb, cfg.JWTSecret, cfg.ShopifyAPIKey, cfg.ShopifyAPISecret, cfg.ShopifyScopes, cfg.AppURL, cfg.APIURL, cfg.IngestURL, log)
+	if shopifyHandler.Configured() {
+		app.Get("/shopify/install", shopifyHandler.Install)
+		app.Get("/shopify/callback", shopifyHandler.Callback)
+		app.Post("/shopify/webhooks/app/uninstalled", shopifyHandler.WebhookUninstalled)
+		app.Post("/shopify/webhooks/customers/data_request", shopifyHandler.WebhookGDPR)
+		app.Post("/shopify/webhooks/customers/redact", shopifyHandler.WebhookGDPR)
+		app.Post("/shopify/webhooks/shop/redact", shopifyHandler.WebhookGDPR)
+		log.Info("shopify app routes enabled")
+	}
 	protected.Get("/projects/:id/replays", replayHandler.List)
 	protected.Get("/projects/:id/replays/:sessionId", replayHandler.Get)
 	protected.Delete("/projects/:id/replays/:sessionId", middleware.RequirePerm(db, rdb, perms.ReplayManage), replayHandler.Delete)

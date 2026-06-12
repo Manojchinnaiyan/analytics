@@ -1,0 +1,26 @@
+api_version = "2024-10"
+
+[[extensions]]
+name = "InspectUser Web Pixel"
+handle = "inspectuser-pixel"
+uid = "9182abbb-385b-ff49-f357-03541f0f1f3373ab0d3f"
+type = "web_pixel_extension"
+runtime_context = "strict"
+
+  # These settings are supplied by the app at install time (webPixelCreate).
+  [extensions.settings]
+  type = "object"
+
+    [[extensions.settings.fields]]
+    key = "apiKey"
+    name = "InspectUser project API key"
+    description = "Publishable ingest key for this store's InspectUser project."
+    type = "single_line_text_field"
+    validations = [ { name = "min", value = "1" } ]
+
+    [[extensions.settings.fields]]
+    key = "ingestUrl"
+    name = "Ingestion API URL"
+    description = "Origin of the InspectUser ingestion API (e.g. https://ingest.inspectuser.com)."
+    type = "single_line_text_field"
+    validations = [ { name = "min", value = "1" } ]
