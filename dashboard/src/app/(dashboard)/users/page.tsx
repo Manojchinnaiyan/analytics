@@ -9,6 +9,7 @@ import { api } from '@/lib/api'
 import { useProjectStore } from '@/stores/project'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card } from '@/components/ui/Card'
+import { Avatar } from '@/components/ui/Avatar'
 
 interface UserRow {
   user_id: string
@@ -87,9 +88,7 @@ export default function UsersPage() {
                 >
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-full text-white flex items-center justify-center type-small-10 ${u.is_anonymous ? 'bg-[#98a0b8]' : 'accent-gradient'}`}>
-                        {u.user_id.slice(0, 2).toUpperCase()}
-                      </div>
+                      <Avatar seed={u.user_id} size={34} />
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="type-small-body text-[var(--color-text)] truncate max-w-[280px]" title={u.user_id}>{u.user_id}</span>

@@ -57,6 +57,9 @@ export default function FunnelsPage() {
   const [filters, setFilters] = useState<(Filter & { _k?: number })[]>([])
   const [cohortId, setCohortId] = useState('')
   const [tab, setTab] = useState<Tab>('conversion')
+  // The funnel only fetches when this version bumps (Run button) — NOT on every
+  // keystroke. Starts at 1 so it auto-runs once after the steps seed.
+  const [runVersion, setRunVersion] = useState(1)
 
   const { start, end } = rangeFromDays(rangeDays)
   const cleanFilters = stripFilters(filters)
@@ -64,7 +67,9 @@ export default function FunnelsPage() {
   const cleanExclusions = exclusions.filter(Boolean)
 
   const { data, isLoading } = useQuery({
-    queryKey: ['funnel', projectId, steps, rangeDays, windowValue, windowUnit, mode, countedBy, breakdown, cleanExclusions, cleanFilters, cohortId],
+    // Only runVersion is in the key — changing inputs does NOT refetch; clicking
+    // "Run" does. The queryFn below always reads the latest input values.
+    queryKey: ['funnel', projectId, runVersion],
     queryFn: () => api.funnel({
       project_id: projectId,
       steps: validSteps.map(({ event_type }) => ({ event_type })),
@@ -151,6 +156,13 @@ export default function FunnelsPage() {
             <span className="type-caption text-[var(--color-text-muted)] block mb-1.5">Cohort</span>
             <CohortSelect value={cohortId} onChange={setCohortId} />
           </div>
+          <button
+            onClick={() => setRunVersion(v => v + 1)}
+            disabled={validSteps.length < 2}
+            className="btn-brand px-5 py-2 type-caption rounded-md disabled:opacity-50 ml-auto"
+          >
+            {isLoading ? 'Running…' : 'Run funnel'}
+          </button>
         </div>
 
         <div className="border-t border-[var(--color-border)] mt-4 pt-4">

@@ -8,6 +8,7 @@ import { api } from '@/lib/api'
 import { useProjectStore } from '@/stores/project'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card } from '@/components/ui/Card'
+import { Avatar, countryFlag } from '@/components/ui/Avatar'
 import { EventSelect } from '@/components/EventSelect'
 
 interface LiveEvent {
@@ -116,12 +117,11 @@ export default function LiveEventsPage() {
               const preview = propsPreview(e.properties)
               return (
                 <div key={`${e.ts_ms}-${i}`} className="flex items-start gap-3 px-5 py-3 hover:bg-[var(--color-surface-muted)]">
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-[#EEF3FD] text-[#0052F2] type-body-12-400 mt-0.5 whitespace-nowrap">
-                    {e.event_type}
-                  </span>
+                  <Avatar seed={who} size={34} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="type-small-body text-[var(--color-text)] truncate max-w-[220px]" title={who}>{who}</span>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-[#EEF3FD] text-[#0052F2] type-body-12-400 whitespace-nowrap">{e.event_type}</span>
+                      <span className="type-small-body text-[var(--color-text)] truncate max-w-[180px]" title={who}>{who}</span>
                       {(e.platform || e.device_type) && (
                         <span className="inline-flex items-center gap-1 type-body-12-400 text-[var(--color-text-subtle)]">
                           <Smartphone className="h-3 w-3" />{[e.platform, e.os_name].filter(Boolean).join(' ') || e.device_type}
@@ -129,7 +129,7 @@ export default function LiveEventsPage() {
                       )}
                       {(e.country || e.city) && (
                         <span className="inline-flex items-center gap-1 type-body-12-400 text-[var(--color-text-subtle)]">
-                          <Globe className="h-3 w-3" />{[e.city, e.country].filter(Boolean).join(', ')}
+                          <span className="text-[14px] leading-none">{countryFlag(e.country)}</span>{[e.city, e.country].filter(Boolean).join(', ')}
                         </span>
                       )}
                       {e.utm_source && (

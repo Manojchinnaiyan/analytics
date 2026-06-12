@@ -2,6 +2,7 @@
 
 import { use, useState } from 'react'
 import { Skeleton, TableSkeleton } from '@/components/ui/Skeleton'
+import { Avatar } from '@/components/ui/Avatar'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import Link from 'next/link'
 import { ArrowLeft, Zap, Activity, Layers, Calendar, Globe, Monitor, Download, Trash2, ShieldAlert } from 'lucide-react'
@@ -146,9 +147,7 @@ export default function UserProfilePage({ params }: { params: Promise<{ userId: 
           {/* Header */}
           <div className="glass rounded-lg p-6">
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-full bg-[#0052F2] text-white flex items-center justify-center type-h3">
-                {decodedId.slice(0, 2).toUpperCase()}
-              </div>
+              <Avatar seed={decodedId} size={56} />
               <div>
                 <h1 className="type-h3 text-[#0f172a]">{decodedId}</h1>
                 <p className="type-body-13 text-[#64748b] mt-0.5">
