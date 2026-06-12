@@ -4,11 +4,12 @@ import { useState } from 'react'
 import { Skeleton, TableSkeleton } from '@/components/ui/Skeleton'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import Link from 'next/link'
-import { PlayCircle, Clock, User, Copy, Check, ChevronRight, ChevronDown, ShieldCheck, Trash2 } from 'lucide-react'
+import { PlayCircle, Clock, Copy, Check, ChevronRight, ChevronDown, ShieldCheck, Trash2 } from 'lucide-react'
 import { api } from '@/lib/api'
 import { useProjectStore } from '@/stores/project'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card } from '@/components/ui/Card'
+import { Avatar } from '@/components/ui/Avatar'
 
 interface Replay {
   session_id: string
@@ -126,7 +127,7 @@ export default function ReplayPage() {
               {replays.map(r => (
                 <tr key={r.session_id} className="border-b border-[var(--color-border)] last:border-0 hover:bg-[var(--color-surface-muted)]">
                   <td className="px-5 py-3"><Link href={`/replay/${encodeURIComponent(r.session_id)}`} className="type-small-body text-[#0052F2] hover:underline">{r.session_id.slice(0, 18)}…</Link></td>
-                  <td className="px-5 py-3"><span className="inline-flex items-center gap-1.5 type-body-13 text-[var(--color-text-muted)]"><User className="h-3.5 w-3.5" />{r.distinct_id || 'anonymous'}</span></td>
+                  <td className="px-5 py-3"><span className="inline-flex items-center gap-2 type-body-13 text-[var(--color-text-muted)]"><Avatar seed={r.distinct_id || 'anonymous'} size={24} />{r.distinct_id || 'anonymous'}</span></td>
                   <td className="px-5 py-3 text-right"><span className="inline-flex items-center gap-1 type-body-13 text-[var(--color-text)]"><Clock className="h-3.5 w-3.5 text-[var(--color-text-subtle)]" />{fmtDur(r.duration_ms)}</span></td>
                   <td className="px-5 py-3 text-right type-body-13 text-[var(--color-text-subtle)]">{timeAgo(r.started_at)}</td>
                   <td className="px-3 py-3">

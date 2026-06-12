@@ -7,7 +7,7 @@ import {
   LayoutGrid, Rocket, Sparkles, RefreshCw, BarChart2, GitMerge,
   Radio, Link2, Users, Users2, Settings, LayoutDashboard,
   Activity, Megaphone, Wrench, ChevronRight, PanelLeftClose, PanelLeftOpen,
-  Repeat, Zap, Route, Tags, Globe, Bell, FlaskConical, PlayCircle, Terminal, Sigma, Gauge, DollarSign, ScrollText, DatabaseZap, Plug, ShoppingBag, Package,
+  Repeat, Zap, Route, Tags, Globe, Bell, FlaskConical, PlayCircle, Terminal, Sigma, Gauge, DollarSign, ScrollText, DatabaseZap, Plug, ShoppingBag, Package, Flame,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { Logo } from '@/components/Logo'
@@ -47,6 +47,7 @@ const groups: Group[] = [
       { href: '/funnels', label: 'Funnels',       icon: GitMerge },
       { href: '/formula', label: 'Formulas',      icon: Sigma },
       { href: '/paths',   label: 'User Paths',    icon: Route },
+      { href: '/heatmaps', label: 'Heatmaps',     icon: Flame },
       { href: '/live',    label: 'Live Events',   icon: Zap },
     ],
   },

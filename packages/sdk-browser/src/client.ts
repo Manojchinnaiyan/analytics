@@ -665,7 +665,16 @@ export class InspectUserClient {
           viewport_height: window.innerHeight,                                   // Viewport Height
         }
         const me = e as MouseEvent
-        this.track('Element Clicked', { ...props, x: me.clientX, y: me.clientY, path: window.location.pathname })
+        // Document-relative coords (px/py) + page dimensions (dw/dh) power heatmaps —
+        // viewport-relative x/y alone can't be aggregated across scroll positions.
+        const docEl = document.documentElement
+        this.track('Element Clicked', {
+          ...props,
+          x: me.clientX, y: me.clientY,
+          px: me.pageX, py: me.pageY,
+          dw: docEl.scrollWidth, dh: docEl.scrollHeight,
+          path: window.location.pathname,
+        })
 
         // File Downloaded — a link to a downloadable file.
         const a = el.closest('a') as HTMLAnchorElement | null

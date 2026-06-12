@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { PageSkeleton } from '@/components/ui/Skeleton'
 import { useQuery } from '@tanstack/react-query'
 import {
-  Activity, Users, UserPlus, Timer, Repeat, Zap,
+  Activity, Users, UserPlus, Timer, Repeat,
   Globe, Monitor, Smartphone, MousePointerClick, LayersIcon,
 } from 'lucide-react'
 import {
@@ -15,6 +15,7 @@ import { useProjectStore } from '@/stores/project'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card } from '@/components/ui/Card'
 import { StatCard } from '@/components/ui/StatCard'
+import { Avatar } from '@/components/ui/Avatar'
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()
@@ -196,7 +197,7 @@ export default function OverviewPage() {
             {ov.recent_events.map((e: { event_type: string; user_id: string; event_time: string }, i: number) => (
               <div key={i} className="flex items-center justify-between py-2.5 border-b border-[var(--color-border)] last:border-0">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="p-1.5 rounded-lg bg-[#EEF3FD]"><Zap className="h-3 w-3 text-[#0052F2]" /></div>
+                  <Avatar seed={e.user_id || 'anon'} size={26} />
                   <span className="type-small-body text-[var(--color-text)] truncate">{e.event_type}</span>
                   <span className="type-body-13 text-[var(--color-text-subtle)] truncate">· {e.user_id || 'anon'}</span>
                 </div>

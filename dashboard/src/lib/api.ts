@@ -125,6 +125,12 @@ export const api = {
   attribution: (projectId: string, conversion = '', model = 'first_touch') =>
     queryApi.get(`/v1/projects/${projectId}/attribution`, { params: { conversion, model } }).then(r => r.data),
 
+  heatmap: (projectId: string, path = '', days = 30) =>
+    queryApi.get(`/v1/projects/${projectId}/heatmap`, { params: { path, days } }).then(r => r.data),
+
+  heatmapSnapshot: (projectId: string, path = '', days = 30) =>
+    queryApi.get(`/v1/projects/${projectId}/heatmap/snapshot`, { params: { path, days } }).then(r => r.data),
+
   productOverview: (projectId: string, days = 30) =>
     queryApi.get(`/v1/projects/${projectId}/product-overview`, { params: { days } }).then(r => r.data),
 

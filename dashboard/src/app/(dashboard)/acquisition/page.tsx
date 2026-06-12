@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { Skeleton, TableSkeleton, PageSkeleton } from '@/components/ui/Skeleton'
 import { useQuery } from '@tanstack/react-query'
-import { Radio, Users, Target } from 'lucide-react'
+import { Radio, Users, Target, GitCompare } from 'lucide-react'
 import { api } from '@/lib/api'
 import { useProjectStore } from '@/stores/project'
 import { useTopEvents } from '@/hooks/useTopEvents'
@@ -49,6 +49,108 @@ function BreakdownTable({ title, rows, showConv, icons }: { title: string; rows:
             </div>
           ))}
         </div>
+      )}
+    </Card>
+  )
+}
+
+const COMPARE_MODELS = [
+  { value: 'first_touch',    label: 'First' },
+  { value: 'last_touch',     label: 'Last' },
+  { value: 'linear',         label: 'Linear' },
+  { value: 'time_decay',     label: 'Time decay' },
+  { value: 'position_based', label: 'Position' },
+]
+
+// Side-by-side credit per channel across all five models — the clearest way to
+// see how multi-touch redistributes credit vs. naive first/last-touch.
+function ModelComparison({ projectId, conversion }: { projectId: string; conversion: string }) {
+  const [open, setOpen] = useState(false)
+
+  const { data, isFetching } = useQuery({
+    queryKey: ['attribution-compare', projectId, conversion],
+    queryFn: async () => {
+      const res = await Promise.all(COMPARE_MODELS.map(m => api.attribution(projectId, conversion, m.value)))
+      return COMPARE_MODELS.map((m, i) => ({
+        model: m.value,
+        total: (res[i].total_conversions as number) || 0,
+        channels: (res[i].channels ?? []) as Bucket[],
+      }))
+    },
+    enabled: open && !!projectId && !!conversion,
+  })
+
+  // Union of channels, ordered by their total credit across models.
+  const channels = useMemo(() => {
+    const tot: Record<string, number> = {}
+    data?.forEach(d => d.channels.forEach(c => { tot[c.value] = (tot[c.value] ?? 0) + c.conversions }))
+    return Object.keys(tot).sort((a, b) => tot[b] - tot[a])
+  }, [data])
+
+  // model → channel → share of that model's conversions (0–1).
+  const share = (model: string, ch: string) => {
+    const md = data?.find(d => d.model === model)
+    if (!md || md.total <= 0) return 0
+    return (md.channels.find(c => c.value === ch)?.conversions ?? 0) / md.total
+  }
+
+  return (
+    <Card>
+      <button onClick={() => setOpen(o => !o)} className="flex items-center justify-between w-full text-left">
+        <div className="flex items-center gap-2">
+          <GitCompare className="h-4 w-4 text-[#0052F2]" />
+          <div>
+            <h2 className="type-h3-16 text-[var(--color-text)]">Compare attribution models</h2>
+            <p className="type-body-13 text-[var(--color-text-subtle)] mt-0.5">See how each channel’s credit shifts across all five models.</p>
+          </div>
+        </div>
+        <span className="type-caption text-[#0052F2] flex-shrink-0">{open ? 'Hide' : 'Compare'}</span>
+      </button>
+
+      {open && (
+        !conversion ? (
+          <p className="type-body-15 text-[var(--color-text-subtle)] py-6 text-center">Pick a conversion event above to compare models.</p>
+        ) : isFetching ? (
+          <div className="mt-4"><TableSkeleton rows={5} /></div>
+        ) : channels.length === 0 ? (
+          <p className="type-body-15 text-[var(--color-text-subtle)] py-6 text-center">No attributed conversions yet.</p>
+        ) : (
+          <div className="overflow-x-auto mt-4">
+            <table className="w-full min-w-[640px]">
+              <thead>
+                <tr className="border-b border-[var(--color-border)] type-caption text-[var(--color-text-muted)]">
+                  <th className="text-left py-2 pr-3">Channel</th>
+                  {COMPARE_MODELS.map(m => <th key={m.value} className="text-right py-2 px-2">{m.label}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {channels.map(ch => {
+                  // Highlight the model that gives this channel the most credit.
+                  const best = COMPARE_MODELS.reduce((b, m) => share(m.value, ch) > share(b, ch) ? m.value : b, COMPARE_MODELS[0].value)
+                  return (
+                    <tr key={ch} className="border-b border-[var(--color-border)] last:border-0">
+                      <td className="py-2.5 pr-3 type-small-body text-[var(--color-text)]">{ch}</td>
+                      {COMPARE_MODELS.map(m => {
+                        const s = share(m.value, ch)
+                        return (
+                          <td key={m.value} className="py-2.5 px-2 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <div className="w-12 bg-[#EEF3FD] rounded-full h-1.5 overflow-hidden hidden sm:block">
+                                <div className="h-full accent-gradient rounded-full" style={{ width: `${s * 100}%` }} />
+                              </div>
+                              <span className={`type-body-13 tabular-nums w-9 ${m.value === best ? 'text-[#0052F2] font-medium' : 'text-[var(--color-text-muted)]'}`}>{(s * 100).toFixed(0)}%</span>
+                            </div>
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+            <p className="type-body-12-400 text-[var(--color-text-subtle)] mt-3">Each column shows the share of conversions a model credits to that channel. <span className="text-[#0052F2]">Blue</span> marks the model that values the channel most — e.g. introducer channels look weak under last-touch but strong under first-touch or position-based.</p>
+          </div>
+        )
       )}
     </Card>
   )
@@ -149,6 +251,8 @@ export default function AcquisitionPage() {
           <BreakdownTable title="Referrers" rows={data?.referrers ?? []} showConv={showConv} />
         </div>
       )}
+
+      <ModelComparison projectId={projectId} conversion={conversion} />
     </div>
   )
 }

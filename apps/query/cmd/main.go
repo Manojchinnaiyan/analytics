@@ -514,6 +514,12 @@ func main() {
 	protected.Get("/projects/:id/replays/:sessionId", replayHandler.Get)
 	protected.Delete("/projects/:id/replays/:sessionId", middleware.RequirePerm(db, rdb, perms.ReplayManage), replayHandler.Delete)
 
+	// Heatmaps: click-density + scroll reach, with a replay snapshot as the page
+	// background (needs the replay store, created above).
+	heatmapHandler := handler.NewHeatmapHandler(chConn, replayStore, log)
+	protected.Get("/projects/:id/heatmap", heatmapHandler.Heatmap)
+	protected.Get("/projects/:id/heatmap/snapshot", heatmapHandler.Snapshot)
+
 	// Retention: purge recordings older than 30 days every 6 hours.
 	go func() {
 		t := time.NewTicker(6 * time.Hour)

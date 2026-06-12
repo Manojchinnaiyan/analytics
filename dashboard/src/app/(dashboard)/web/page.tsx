@@ -11,6 +11,8 @@ import { api } from '@/lib/api'
 import { useProjectStore, usePermission } from '@/stores/project'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Card } from '@/components/ui/Card'
+import { VisitorMap } from '@/components/VisitorMap'
+import { BreakdownIcon } from '@/components/ui/BreakdownIcon'
 import { StatCard } from '@/components/ui/StatCard'
 import { Select } from '@/components/ui/Select'
 import { DateRangePicker } from '@/components/ui/DateRangePicker'
@@ -200,9 +202,9 @@ function WebEngagementSection({ projectId, days, filters }: { projectId: string;
           </div>
         )}
       </Card>
-      <BreakdownCard title="File downloads" rows={downloads} metric="downloads" />
-      <BreakdownCard title="Outbound links" rows={outbound} metric="clicks" />
-      <BreakdownCard title="Custom events" rows={customEvents} metric="events" />
+      <BreakdownCard title="File downloads" rows={downloads} metric="downloads" iconType="download" />
+      <BreakdownCard title="Outbound links" rows={outbound} metric="clicks" iconType="outbound" />
+      <BreakdownCard title="Custom events" rows={customEvents} metric="events" iconType="event" />
       <Card>
         <h2 className="type-h3-16 text-[var(--color-text)] mb-4">Scroll depth</h2>
         {scrollBase === 0 || scroll.every(s => s.visitors === 0) ? (
@@ -244,12 +246,13 @@ function fmtDuration(sec: number): string {
   return s ? `${m}m ${s}s` : `${m}m`
 }
 
-function BreakdownCard({ title, rows, metric, filterKey, onFilter }: {
+function BreakdownCard({ title, rows, metric, filterKey, onFilter, iconType }: {
   title: string; rows: Row[]; metric: 'views' | 'sessions' | 'visitors' | 'downloads' | 'events' | 'clicks'
-  filterKey?: string; onFilter?: (k: string, v: string) => void
+  filterKey?: string; onFilter?: (k: string, v: string) => void; iconType?: string
 }) {
   const max = rows[0]?.[metric] ?? 1
   const clickable = !!filterKey && !!onFilter
+  const icon = iconType ?? filterKey
   return (
     <Card>
       <h2 className="type-h3-16 text-[var(--color-text)] mb-4">{title}</h2>
@@ -264,7 +267,10 @@ function BreakdownCard({ title, rows, metric, filterKey, onFilter }: {
               onClick={() => clickable && onFilter!(filterKey!, r.value)}
               className={`flex items-center gap-3 w-full text-left ${clickable ? 'cursor-pointer group' : 'cursor-default'}`}
             >
-              <span className={`type-small-body w-44 truncate ${clickable ? 'text-[var(--color-text)] group-hover:text-[#0052F2]' : 'text-[var(--color-text)]'}`} title={r.value}>{r.value}</span>
+              <span className="flex items-center gap-2 w-44 min-w-0">
+                <BreakdownIcon type={icon} value={r.value} />
+                <span className={`type-small-body truncate ${clickable ? 'text-[var(--color-text)] group-hover:text-[#0052F2]' : 'text-[var(--color-text)]'}`} title={r.value}>{r.value}</span>
+              </span>
               <div className="flex-1 bg-[#EEF3FD] rounded-full h-2 overflow-hidden">
                 <div className="h-full accent-gradient rounded-full" style={{ width: `${((r[metric] ?? 0) / max) * 100}%` }} />
               </div>
@@ -366,15 +372,26 @@ export default function WebAnalyticsPage() {
         )}
       </Card>
 
+      <div className="grid lg:grid-cols-3 gap-4">
+        <Card className="lg:col-span-2">
+          <h2 className="type-h3-16 text-[var(--color-text)] mb-4">Visitors by country</h2>
+          {isLoading ? (
+            <div className="h-[320px] p-1"><Skeleton className="h-full w-full rounded-lg" /></div>
+          ) : (
+            <VisitorMap countries={data?.countries ?? []} />
+          )}
+        </Card>
+        <BreakdownCard title="Top countries" rows={data?.countries ?? []} metric="visitors" filterKey="country" onFilter={setFilter} />
+      </div>
+
       <div className="grid lg:grid-cols-2 gap-4">
         <BreakdownCard title="Top pages" rows={data?.top_pages ?? []} metric="views" filterKey="path" onFilter={setFilter} />
         <BreakdownCard title="Top sources" rows={data?.referrers ?? []} metric="sessions" filterKey="source" onFilter={setFilter} />
-        <BreakdownCard title="Landing pages (entry)" rows={data?.landing_pages ?? []} metric="sessions" />
-        <BreakdownCard title="Exit pages" rows={data?.exit_pages ?? []} metric="sessions" />
+        <BreakdownCard title="Landing pages (entry)" rows={data?.landing_pages ?? []} metric="sessions" iconType="path" />
+        <BreakdownCard title="Exit pages" rows={data?.exit_pages ?? []} metric="sessions" iconType="path" />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <BreakdownCard title="Locations" rows={data?.countries ?? []} metric="visitors" filterKey="country" onFilter={setFilter} />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <BreakdownCard title="Browsers" rows={data?.browsers ?? []} metric="visitors" filterKey="browser" onFilter={setFilter} />
         <BreakdownCard title="OS" rows={data?.os ?? []} metric="visitors" filterKey="os" onFilter={setFilter} />
         <BreakdownCard title="Devices" rows={data?.devices ?? []} metric="visitors" filterKey="device" onFilter={setFilter} />
