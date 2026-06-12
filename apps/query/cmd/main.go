@@ -405,6 +405,11 @@ func main() {
 	protected.Delete("/projects/:id/web/goals/:goalId", middleware.RequirePerm(db, rdb, perms.SettingsManage), productHandler.DeleteWebGoal)
 	protected.Get("/projects/:id/revenue", productHandler.Revenue)
 
+	// Ecommerce section — store KPIs, shopping funnel, product rankings.
+	ecommerceHandler := handler.NewEcommerceHandler(chConn, log)
+	protected.Get("/projects/:id/ecommerce/overview", ecommerceHandler.Overview)
+	protected.Get("/projects/:id/ecommerce/products", ecommerceHandler.Products)
+
 	cohortHandler := handler.NewCohortHandler(db, chConn, log)
 	protected.Get("/projects/:id/cohorts", cohortHandler.List)
 	protected.Post("/projects/:id/cohorts", cohortHandler.Create)
@@ -501,6 +506,10 @@ func main() {
 		app.Post("/shopify/webhooks/shop/redact", shopifyHandler.WebhookGDPR)
 		log.Info("shopify app routes enabled")
 	}
+	// Dashboard "Integrations" UI — always available (degrade gracefully if the
+	// app credentials aren't set).
+	protected.Get("/shopify/connections", shopifyHandler.Connections)
+	protected.Post("/shopify/connect", shopifyHandler.ConnectURL)
 	protected.Get("/projects/:id/replays", replayHandler.List)
 	protected.Get("/projects/:id/replays/:sessionId", replayHandler.Get)
 	protected.Delete("/projects/:id/replays/:sessionId", middleware.RequirePerm(db, rdb, perms.ReplayManage), replayHandler.Delete)

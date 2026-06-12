@@ -26,6 +26,38 @@ export function track(eventType: string, properties?: Record<string, unknown>, o
   _instance?.track(eventType, properties, options)
 }
 
+// Standard, platform-agnostic ecommerce events. ANY store (custom, WooCommerce,
+// headless, etc.) calls these and the Ecommerce dashboard populates exactly like
+// the Shopify pixel does — the property keys are what the Ecommerce section reads.
+type Money = number | string
+export const ecommerce = {
+  productViewed: (p: { product: string; price?: Money; currency?: string } & Record<string, unknown>) =>
+    track('Product Viewed', { ...p }),
+  addedToCart: (p: { product: string; price?: Money; quantity?: number; currency?: string } & Record<string, unknown>) =>
+    track('Product Added to Cart', { ...p }),
+  checkoutStarted: (p: { revenue?: Money; currency?: string; items?: number } & Record<string, unknown>) =>
+    track('Checkout Started', { ...p }),
+  orderCompleted: (p: {
+    revenue?: Money
+    currency?: string
+    order_id?: string
+    products?: { product: string; quantity?: number; price?: Money }[]
+  } & Record<string, unknown>) => {
+    const { products, ...rest } = p
+    track('Order Completed', { ...rest, items: products?.length })
+    // One event per line item → product-level sales analytics.
+    ;(products ?? []).forEach((li) =>
+      track('Product Purchased', {
+        product: li.product,
+        quantity: li.quantity,
+        price: li.price,
+        currency: p.currency,
+        revenue: Number(li.price ?? 0) * Number(li.quantity ?? 1),
+      }),
+    )
+  },
+}
+
 export function identify(userId: string, properties?: Record<string, unknown>): void {
   _instance?.identify(userId, properties)
 }
@@ -70,4 +102,4 @@ export function reset(): void {
   _instance?.reset()
 }
 
-export default { init, track, identify, setUserProperties, revenue, setGroup, setOptOut, setConsent, logout, alias, flags, flush, reset }
+export default { init, track, identify, setUserProperties, revenue, ecommerce, setGroup, setOptOut, setConsent, logout, alias, flags, flush, reset }

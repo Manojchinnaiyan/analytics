@@ -89,6 +89,32 @@ function safeProps(json: string): Record<string, unknown> {
   }
 }
 
+// Turn an event + its properties into one clean, human-readable line.
+function describe(eventType: string, p: Record<string, unknown>): string {
+  const s = (v: unknown) => (typeof v === 'string' ? v : v != null ? String(v) : '')
+  const money = (v: unknown) => (v != null && v !== '' ? `$${s(v)}` : '')
+  switch (eventType) {
+    case 'Page Viewed':
+    case '$pageview': return `Viewed ${s(p.path) || s(p.url) || 'a page'}`
+    case 'Product Viewed': return p.product ? `Viewed product — ${s(p.product)}` : 'Viewed a product'
+    case 'Product Added to Cart': return p.product ? `Added to cart — ${s(p.product)}` : 'Added to cart'
+    case 'Checkout Started': return money(p.revenue) ? `Started checkout (${money(p.revenue)})` : 'Started checkout'
+    case 'Order Completed': return `Completed an order${money(p.revenue) ? ` — ${money(p.revenue)}` : ''}`
+    case 'Product Purchased': return `Purchased ${s(p.product) || 'a product'}${money(p.revenue) ? ` (${money(p.revenue)})` : ''}`
+    case 'Element Clicked': return p.text ? `Clicked “${s(p.text)}”` : `Clicked ${s(p.tag) || 'an element'}`
+    case 'Search Submitted': return p.query ? `Searched “${s(p.query)}”` : 'Searched'
+    case 'Form Submitted': return 'Submitted a form'
+    case 'Form Started': return 'Started filling a form'
+    case '$rageclick': return `Rage-clicked${p.text ? ` “${s(p.text)}”` : ''}`
+    case '$dead_click': return `Dead click${p.text ? ` “${s(p.text)}”` : ''}`
+    case '$exception': return `Hit a JS error${p.message ? `: ${s(p.message).slice(0, 60)}` : ''}`
+    case 'Scroll Depth': return `Scrolled${p.depth ? ` ${s(p.depth)}%` : ' the page'}`
+    case 'Logged In': return 'Logged in'
+    case 'Signed Up': return 'Signed up'
+    default: return eventType
+  }
+}
+
 export default function UserProfilePage({ params }: { params: Promise<{ userId: string }> }) {
   const { userId } = use(params)
   const decodedId = decodeURIComponent(userId)
@@ -183,16 +209,14 @@ export default function UserProfilePage({ params }: { params: Promise<{ userId: 
                           <Zap className="h-1.5 w-1.5 text-[#0052F2]" />
                         </div>
                         <div className="flex items-center justify-between gap-2">
-                          <span className="type-small-body text-[#0f172a]">{e.event_type}</span>
-                          <span className="type-body-12-400 text-[#94a3b8] flex items-center gap-1">
+                          <span className="type-small-body text-[#0f172a]">{describe(e.event_type, props)}</span>
+                          <span className="type-body-12-400 text-[#94a3b8] flex items-center gap-1 flex-shrink-0">
                             <Calendar className="h-3 w-3" /> {fmt(e.event_time)}
                           </span>
                         </div>
-                        {Object.keys(props).length > 0 && (
-                          <div className="mt-1 type-caption-12-400 text-[#64748b] bg-[#f8fafc] rounded-lg px-2.5 py-1.5 break-all">
-                            {JSON.stringify(props)}
-                          </div>
-                        )}
+                        {(props.path || props.url) ? (
+                          <div className="mt-0.5 type-caption-12-400 text-[#94a3b8] truncate">{String(props.path || props.url)}</div>
+                        ) : null}
                       </div>
                     )
                   })}

@@ -95,7 +95,9 @@ func (h *ShopifyHandler) Callback(c fiber.Ctx) error {
 	if !validShop(shop) || code == "" {
 		return c.Status(fiber.StatusBadRequest).SendString("invalid request")
 	}
-	if want, _ := h.rdb.Get(ctx, "shopify_state:"+state).Result(); state == "" || want != shop {
+	stateVal, _ := h.rdb.Get(ctx, "shopify_state:"+state).Result()
+	parts := strings.Split(stateVal, "|")
+	if state == "" || parts[0] != shop {
 		return c.Status(fiber.StatusForbidden).SendString("bad state")
 	}
 	h.rdb.Del(ctx, "shopify_state:"+state)
@@ -109,7 +111,12 @@ func (h *ShopifyHandler) Callback(c fiber.Ctx) error {
 		return c.Status(fiber.StatusBadGateway).SendString("token exchange failed")
 	}
 
-	apiKey, err := h.provision(ctx, shop, token)
+	// A dashboard "Connect" carries org|project in the state → link to it.
+	var linkOrg, linkProject string
+	if len(parts) >= 3 {
+		linkOrg, linkProject = parts[1], parts[2]
+	}
+	apiKey, err := h.provision(ctx, shop, token, linkOrg, linkProject)
 	if err != nil {
 		h.log.Error("shopify provision failed", zap.String("shop", shop), zap.Error(err))
 		return c.Status(fiber.StatusInternalServerError).SendString("provisioning failed")
@@ -154,9 +161,25 @@ func (h *ShopifyHandler) exchangeToken(ctx context.Context, shop, code string) (
 
 // ---- Provisioning -----------------------------------------------------------
 
-// provision creates (or, on re-install, reuses) an org + owner + project for the
-// store and returns the project's publishable api key. Idempotent on `shop`.
-func (h *ShopifyHandler) provision(ctx context.Context, shop, token string) (string, error) {
+// provision returns the project's publishable api key for the store. When
+// linkProject is set (the dashboard "Connect" flow) the store is attached to that
+// existing project; otherwise (App Store install) an org + owner + project are
+// created, reusing them on re-install. Idempotent on `shop`.
+func (h *ShopifyHandler) provision(ctx context.Context, shop, token, linkOrg, linkProject string) (string, error) {
+	// Dashboard "Connect" flow: attach the store to the user's existing project.
+	if linkProject != "" {
+		var apiKey string
+		if err := h.db.QueryRow(ctx, `SELECT api_key FROM projects WHERE id = $1`, linkProject).Scan(&apiKey); err != nil {
+			return "", fmt.Errorf("link project: %w", err)
+		}
+		h.rdb.Set(ctx, "apikey:"+apiKey, linkProject, 0)
+		_, err := h.db.Exec(ctx,
+			`INSERT INTO shopify_installs (shop, org_id, project_id, access_token) VALUES ($1,$2,$3,$4)
+			 ON CONFLICT (shop) DO UPDATE SET org_id=EXCLUDED.org_id, project_id=EXCLUDED.project_id, access_token=EXCLUDED.access_token, installed_at=now(), uninstalled_at=NULL`,
+			shop, linkOrg, linkProject, token)
+		return apiKey, err
+	}
+
 	// Re-install: reuse the existing project, refresh the token, re-seed Redis.
 	var apiKey, projectID string
 	err := h.db.QueryRow(ctx,
@@ -210,35 +233,62 @@ func (h *ShopifyHandler) provision(ctx context.Context, shop, token string) (str
 
 // ---- Web Pixel --------------------------------------------------------------
 
-// activatePixel creates the app's Web Pixel on the store, handing it this
-// project's ingest key + URL via the pixel `settings`.
+// activatePixel creates or updates the app's Web Pixel on the store, handing it
+// this project's ingest key + URL via the pixel `settings`. Idempotent —
+// re-connecting re-points the existing pixel (e.g. to a new ingest URL).
 func (h *ShopifyHandler) activatePixel(ctx context.Context, shop, token, projectAPIKey string) error {
 	settings, _ := json.Marshal(map[string]string{"apiKey": projectAPIKey, "ingestUrl": h.ingestURL})
-	payload, _ := json.Marshal(map[string]any{
-		"query":     `mutation($s: JSON!){ webPixelCreate(webPixel:{settings:$s}){ userErrors{ field message } webPixel{ id } } }`,
-		"variables": map[string]any{"s": string(settings)},
-	})
-	return h.adminGraphQL(ctx, shop, token, payload)
+
+	// An app has at most one web pixel per shop — look it up first.
+	probeReq, _ := json.Marshal(map[string]any{"query": `{ webPixel { id } }`})
+	body, err := h.adminGraphQL(ctx, shop, token, probeReq)
+	if err != nil {
+		return err
+	}
+	var probe struct {
+		Data struct {
+			WebPixel *struct {
+				ID string `json:"id"`
+			} `json:"webPixel"`
+		} `json:"data"`
+	}
+	_ = json.Unmarshal(body, &probe)
+
+	var payload []byte
+	if probe.Data.WebPixel != nil && probe.Data.WebPixel.ID != "" {
+		payload, _ = json.Marshal(map[string]any{
+			"query":     `mutation($id: ID!, $s: JSON!){ webPixelUpdate(id:$id, webPixel:{settings:$s}){ userErrors{ field message } webPixel{ id } } }`,
+			"variables": map[string]any{"id": probe.Data.WebPixel.ID, "s": string(settings)},
+		})
+	} else {
+		payload, _ = json.Marshal(map[string]any{
+			"query":     `mutation($s: JSON!){ webPixelCreate(webPixel:{settings:$s}){ userErrors{ field message } webPixel{ id } } }`,
+			"variables": map[string]any{"s": string(settings)},
+		})
+	}
+	_, err = h.adminGraphQL(ctx, shop, token, payload)
+	return err
 }
 
-func (h *ShopifyHandler) adminGraphQL(ctx context.Context, shop, token string, payload []byte) error {
+func (h *ShopifyHandler) adminGraphQL(ctx context.Context, shop, token string, payload []byte) ([]byte, error) {
 	endpoint := fmt.Sprintf("https://%s/admin/api/%s/graphql.json", shop, shopifyAPIVersion)
 	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(payload))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-Shopify-Access-Token", token)
 	resp, err := h.http.Do(req)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer resp.Body.Close()
 	b, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("graphql status %d: %s", resp.StatusCode, string(b))
+		return b, fmt.Errorf("graphql status %d: %s", resp.StatusCode, string(b))
 	}
-	if bytes.Contains(b, []byte(`"message"`)) && bytes.Contains(b, []byte(`"userErrors"`)) && !bytes.Contains(b, []byte(`"userErrors":[]`)) {
-		return fmt.Errorf("graphql userErrors: %s", string(b))
+	// Surface non-empty mutation userErrors.
+	if bytes.Contains(b, []byte(`"userErrors"`)) && !bytes.Contains(b, []byte(`"userErrors":[]`)) {
+		return b, fmt.Errorf("graphql userErrors: %s", string(b))
 	}
-	return nil
+	return b, nil
 }
 
 // ---- Webhooks (mandatory compliance + uninstall) ----------------------------
@@ -303,4 +353,74 @@ func (h *ShopifyHandler) verifyWebhook(c fiber.Ctx) bool {
 	mac.Write(c.Body())
 	want := base64.StdEncoding.EncodeToString(mac.Sum(nil))
 	return hmac.Equal([]byte(got), []byte(want))
+}
+
+// ---- Dashboard "Connect Shopify" (JWT) --------------------------------------
+
+// ConnectURL (POST /v1/shopify/connect) returns the OAuth URL to attach a store
+// to the caller's current project. The state carries org|project so the callback
+// links the store to it instead of creating a fresh project.
+func (h *ShopifyHandler) ConnectURL(c fiber.Ctx) error {
+	if !h.Configured() {
+		return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{"error": "Shopify integration is not configured on the server"})
+	}
+	orgID, _ := c.Locals("org_id").(string)
+	var body struct {
+		Shop      string `json:"shop"`
+		ProjectID string `json:"project_id"`
+	}
+	if err := c.Bind().JSON(&body); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid body"})
+	}
+	shop := strings.ToLower(strings.TrimSpace(body.Shop))
+	if shop != "" && !strings.Contains(shop, ".") {
+		shop += ".myshopify.com" // allow entering just the store handle
+	}
+	if !validShop(shop) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "enter a valid myshopify.com domain"})
+	}
+	var ok bool
+	if err := h.db.QueryRow(c.Context(), `SELECT EXISTS(SELECT 1 FROM projects WHERE id=$1 AND org_id=$2)`, body.ProjectID, orgID).Scan(&ok); err != nil || !ok {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "unknown project"})
+	}
+	state := genKey(16)
+	h.rdb.Set(c.Context(), "shopify_state:"+state, shop+"|"+orgID+"|"+body.ProjectID, 10*time.Minute)
+	authURL := fmt.Sprintf(
+		"https://%s/admin/oauth/authorize?client_id=%s&scope=%s&redirect_uri=%s&state=%s",
+		shop, url.QueryEscape(h.apiKey), url.QueryEscape(h.scopes),
+		url.QueryEscape(h.apiURL+"/shopify/callback"), url.QueryEscape(state),
+	)
+	return c.JSON(fiber.Map{"url": authURL})
+}
+
+// Connections (GET /v1/shopify/connections) lists the stores linked to the
+// caller's org.
+func (h *ShopifyHandler) Connections(c fiber.Ctx) error {
+	orgID, _ := c.Locals("org_id").(string)
+	rows, err := h.db.Query(c.Context(),
+		`SELECT s.shop, p.id::text, p.name, s.installed_at, s.uninstalled_at
+		   FROM shopify_installs s JOIN projects p ON p.id = s.project_id
+		  WHERE s.org_id = $1 ORDER BY s.installed_at DESC`, orgID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "query failed"})
+	}
+	defer rows.Close()
+	type conn struct {
+		Shop          string     `json:"shop"`
+		ProjectID     string     `json:"project_id"`
+		ProjectName   string     `json:"project_name"`
+		InstalledAt   time.Time  `json:"installed_at"`
+		UninstalledAt *time.Time `json:"uninstalled_at"`
+		Connected     bool       `json:"connected"`
+	}
+	out := []conn{}
+	for rows.Next() {
+		var x conn
+		if err := rows.Scan(&x.Shop, &x.ProjectID, &x.ProjectName, &x.InstalledAt, &x.UninstalledAt); err != nil {
+			continue
+		}
+		x.Connected = x.UninstalledAt == nil
+		out = append(out, x)
+	}
+	return c.JSON(fiber.Map{"connections": out, "configured": h.Configured()})
 }

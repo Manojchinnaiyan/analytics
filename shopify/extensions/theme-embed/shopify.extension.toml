@@ -1,0 +1,7 @@
+api_version = "2024-10"
+
+[[extensions]]
+type = "theme"
+name = "InspectUser — Session Replay & Autocapture"
+handle = "inspectuser-theme"
+uid = "19987097-bcca-22c8-f0f4-6cf894e35b0b063c30d3"

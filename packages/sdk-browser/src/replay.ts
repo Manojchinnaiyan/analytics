@@ -3,14 +3,16 @@
 // endpoint. Folded into the SDK so one init() does analytics + replay, the way
 // PostHog/Amplitude ship it.
 //
-// NOTE on idle: pausing/restarting rrweb mid-session corrupts the event stream
-// (incremental events depend on a continuous mirror), so we record continuously.
-// Storage is instead controlled by sampleRate, throttled high-frequency signals,
-// and server-side retention — none of which break playback.
+// NOTE on idle: we never stop/restart rrweb (that corrupts the event stream —
+// incremental events depend on a continuous mirror). Instead, while the tab is
+// hidden we keep rrweb running but DROP its output so idle background mutations
+// don't inflate the session; on return we force one full snapshot to re-sync the
+// player. Storage is further controlled by sampleRate + throttled signals.
 
 import { record } from 'rrweb'
 
 const FLUSH_INTERVAL_MS = 8000
+const IDLE_MS = 60000 // pause recording after 60s of no user interaction
 
 let started = false
 
@@ -48,6 +50,7 @@ export function startSessionReplay(cfg: ReplayConfig): void {
 
   const begin = () => {
     let buf: unknown[] = []
+    let paused = false // true while the tab is hidden — stops idle time inflating the session
 
     // flush() is defined BEFORE record() because rrweb emits the initial full
     // snapshot synchronously during record(), and emit() flushes it right away.
@@ -81,6 +84,7 @@ export function startSessionReplay(cfg: ReplayConfig): void {
 
     record({
       emit(event) {
+        if (paused) return // tab hidden: don't record idle background mutations
         buf.push(event)
         // Full snapshot (type 2) is large AND critical — upload it immediately so
         // a quick navigation can't drop it before the periodic flush.
@@ -93,10 +97,32 @@ export function startSessionReplay(cfg: ReplayConfig): void {
       sampling: { mousemove: 50, scroll: 150, input: 'last' },
     })
 
-    setInterval(() => flush(false), FLUSH_INTERVAL_MS)
+    setInterval(() => { if (!paused) flush(false) }, FLUSH_INTERVAL_MS)
+
+    // PAUSE recording when the user is inactive — the tab is hidden OR there's
+    // been no interaction for IDLE_MS. Otherwise a left-open / idle tab keeps
+    // recording the page's background DOM mutations (carousels, timers, ads) and
+    // the duration grows with dead air. On the next activity we resume and force
+    // one full snapshot to re-sync the player (we never stop/restart rrweb — that
+    // corrupts the stream — we only gate its output).
+    const snapshot = () => {
+      try { (record as unknown as { takeFullSnapshot?: (c?: boolean) => void }).takeFullSnapshot?.(true) } catch { /* noop */ }
+    }
+    let idleTimer: ReturnType<typeof setTimeout> | undefined
+    const goIdle = () => { flush(false); paused = true }
+    const bump = () => {
+      if (paused) { paused = false; snapshot() } // resume on activity
+      clearTimeout(idleTimer)
+      idleTimer = setTimeout(goIdle, IDLE_MS)
+    }
+    ;(['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'wheel'] as const).forEach(ev =>
+      window.addEventListener(ev, bump, { passive: true, capture: true }),
+    )
     document.addEventListener('visibilitychange', () => {
-      if (document.hidden) flush(true)
+      if (document.hidden) { flush(true); paused = true; clearTimeout(idleTimer) }
+      else bump()
     })
+    bump() // arm the idle timer
   }
 
   // Skip replay entirely on data-saver mode or very slow (2g) connections — the

@@ -297,6 +297,46 @@ export const api = {
     queryApi.post(`/v1/projects/${projectId}/dashboard/share`).then(r => r.data),
   disableDashboardShare: (projectId: string) =>
     queryApi.delete(`/v1/projects/${projectId}/dashboard/share`).then(r => r.data),
+
+  // Shopify integration
+  shopifyConnections: (): Promise<{ connections: ShopifyConnection[]; configured: boolean }> =>
+    queryApi.get('/v1/shopify/connections').then(r => r.data),
+  shopifyConnect: (shop: string, projectId: string): Promise<{ url: string }> =>
+    queryApi.post('/v1/shopify/connect', { shop, project_id: projectId }).then(r => r.data),
+
+  // Ecommerce
+  ecommerceOverview: (projectId: string, days: number): Promise<EcommerceOverview> =>
+    queryApi.get(`/v1/projects/${projectId}/ecommerce/overview`, { params: { days } }).then(r => r.data),
+  ecommerceProducts: (projectId: string, days: number): Promise<{ products: EcommerceProduct[] }> =>
+    queryApi.get(`/v1/projects/${projectId}/ecommerce/products`, { params: { days } }).then(r => r.data),
+}
+
+export interface ShopifyConnection {
+  shop: string
+  project_id: string
+  project_name: string
+  installed_at: string
+  uninstalled_at: string | null
+  connected: boolean
+}
+
+export interface EcommerceOverview {
+  revenue: number
+  orders: number
+  units: number
+  aov: number
+  sessions: number
+  conversion: number
+  funnel: { viewed: number; carted: number; checkout: number; purchased: number }
+  trend: { date: string; revenue: number; orders: number; views: number }[]
+}
+
+export interface EcommerceProduct {
+  product: string
+  views: number
+  carts: number
+  units: number
+  revenue: number
 }
 
 /** Public (no-auth) base for the read-only shared dashboard. */

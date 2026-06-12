@@ -108,10 +108,27 @@ function loadUserProps(): Record<string, unknown> {
 // safeText returns trimmed, length-capped element text — but NOT for inputs or
 // elements opted out via .mask / [data-private] (avoid leaking PII in click text).
 function safeText(el: HTMLElement): string | undefined {
-  if (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) return undefined
+  if (/^(INPUT|TEXTAREA|SELECT|SCRIPT|STYLE|SVG|TEMPLATE|NOSCRIPT)$/.test(el.tagName)) return undefined
   if (el.closest('.mask, [data-private], .ph-no-capture')) return '***'
-  const t = (el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 120)
-  return t || undefined
+  // Visible text only: clone and drop script/style/template/svg so we never slurp
+  // up JSON-LD, inline scripts, or markup the way raw textContent does.
+  let t = ''
+  try {
+    const clone = el.cloneNode(true) as HTMLElement
+    clone.querySelectorAll('script,style,template,noscript,svg').forEach(n => n.remove())
+    t = (clone.textContent || '').replace(/\s+/g, ' ').trim()
+  } catch {
+    t = (el.textContent || '').replace(/\s+/g, ' ').trim()
+  }
+  // Icon/image links have no text — fall back to a real label.
+  if (!t) {
+    const img = el.querySelector('img')
+    t = (el.getAttribute('aria-label') || el.getAttribute('title') || img?.getAttribute('alt') || '').trim()
+  }
+  if (!t) return undefined
+  // Defensive: if it still looks like markup/code, drop it (better empty than garbage).
+  if (/[<>{}]/.test(t)) return undefined
+  return t.slice(0, 60) // short, clean label
 }
 
 // describeElement captures the rich, PII-safe context autocapture vendors record:

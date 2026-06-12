@@ -11,16 +11,16 @@ register(({ analytics, settings }) => {
 
   const endpoint = ingestUrl.replace(/\/$/, '') + '/v2/httpapi'
 
-  function send(event, eventType, properties) {
+  function send(event, eventType, properties, idSuffix) {
     const body = JSON.stringify({
       api_key: apiKey,
       events: [
         {
           event_type: eventType,
           device_id: event.clientId, // Shopify's stable per-visitor id
-          insert_id: event.id, // dedupe key
+          insert_id: event.id + (idSuffix || ''), // dedupe key (unique per line item)
           time: event.timestamp ? new Date(event.timestamp).getTime() : Date.now(),
-          properties: {
+          event_properties: {
             ...properties,
             url: event.context?.document?.location?.href,
             referrer: event.context?.document?.referrer,
@@ -29,12 +29,14 @@ register(({ analytics, settings }) => {
         },
       ],
     })
-    // fetch with keepalive survives the page unload that follows a purchase.
+    // Send as a CORS "simple request" (text/plain) so the browser skips the
+    // preflight — in the pixel sandbox the preflighted POST was being dropped.
+    // The ingestion parses the JSON body regardless of Content-Type.
     try {
       fetch(endpoint, {
         method: 'POST',
         keepalive: true,
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
         body,
       })
     } catch (_e) {
@@ -74,13 +76,30 @@ register(({ analytics, settings }) => {
     }),
   )
 
-  analytics.subscribe('checkout_completed', (e) =>
+  analytics.subscribe('checkout_completed', (e) => {
+    const co = e.data?.checkout
     send(e, 'Order Completed', {
       // Revenue lands on the event so InspectUser's revenue/attribution works.
-      revenue: e.data?.checkout?.totalPrice?.amount,
-      currency: e.data?.checkout?.currencyCode,
-      order_id: e.data?.checkout?.order?.id,
-      items: e.data?.checkout?.lineItems?.length,
-    }),
-  )
+      revenue: co?.totalPrice?.amount,
+      currency: co?.currencyCode,
+      order_id: co?.order?.id,
+      items: co?.lineItems?.length,
+    })
+    // One event per purchased product → rank products by units sold + revenue.
+    ;(co?.lineItems || []).forEach((li, i) =>
+      send(
+        e,
+        'Product Purchased',
+        {
+          product: li.variant?.product?.title || li.title,
+          variant: li.variant?.title,
+          price: li.variant?.price?.amount,
+          quantity: li.quantity,
+          currency: co?.currencyCode,
+          revenue: Number(li.variant?.price?.amount || 0) * Number(li.quantity || 1),
+        },
+        '-p' + i,
+      ),
+    )
+  })
 })

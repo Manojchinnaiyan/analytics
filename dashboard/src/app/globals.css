@@ -589,3 +589,6 @@
 }
 @keyframes iu-shimmer { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
 @media (prefers-reduced-motion: reduce) { .iu-skeleton { animation: none; } }
+
+/* rrweb-player fills its host container responsively. */
+.rr-player-host .rr-player { max-width: 100%; }

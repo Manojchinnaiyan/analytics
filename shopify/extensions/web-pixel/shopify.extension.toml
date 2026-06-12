@@ -11,15 +11,13 @@ runtime_context = "strict"
   [extensions.settings]
   type = "object"
 
-    [[extensions.settings.fields]]
-    key = "apiKey"
+    [extensions.settings.fields.apiKey]
     name = "InspectUser project API key"
     description = "Publishable ingest key for this store's InspectUser project."
     type = "single_line_text_field"
     validations = [ { name = "min", value = "1" } ]
 
-    [[extensions.settings.fields]]
-    key = "ingestUrl"
+    [extensions.settings.fields.ingestUrl]
     name = "Ingestion API URL"
     description = "Origin of the InspectUser ingestion API (e.g. https://ingest.inspectuser.com)."
     type = "single_line_text_field"

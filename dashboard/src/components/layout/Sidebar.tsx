@@ -7,7 +7,7 @@ import {
   LayoutGrid, Rocket, Sparkles, RefreshCw, BarChart2, GitMerge,
   Radio, Link2, Users, Users2, Settings, LayoutDashboard,
   Activity, Megaphone, Wrench, ChevronRight, PanelLeftClose, PanelLeftOpen,
-  Repeat, Zap, Route, Tags, Globe, Bell, FlaskConical, PlayCircle, Terminal, Sigma, Gauge, DollarSign, ScrollText, DatabaseZap,
+  Repeat, Zap, Route, Tags, Globe, Bell, FlaskConical, PlayCircle, Terminal, Sigma, Gauge, DollarSign, ScrollText, DatabaseZap, Plug, ShoppingBag, Package,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { Logo } from '@/components/Logo'
@@ -31,6 +31,13 @@ const groups: Group[] = [
       { href: '/retention',          label: 'Retention',          icon: RefreshCw },
       { href: '/lifecycle',          label: 'Lifecycle',          icon: Repeat },
       { href: '/revenue',            label: 'Revenue',            icon: DollarSign },
+    ],
+  },
+  {
+    heading: 'Ecommerce', icon: ShoppingBag,
+    items: [
+      { href: '/ecommerce',          label: 'Overview', icon: LayoutGrid },
+      { href: '/ecommerce/products', label: 'Products', icon: Package },
     ],
   },
   {
@@ -68,6 +75,7 @@ const groups: Group[] = [
       { href: '/usage',    label: 'Usage & Billing', icon: Gauge, perm: 'billing.view' },
       { href: '/audit',    label: 'Audit Log', icon: ScrollText, perm: 'team.manage' },
       { href: '/export',   label: 'Data Export', icon: DatabaseZap, perm: 'settings.manage' },
+      { href: '/integrations', label: 'Integrations', icon: Plug },
       { href: '/settings', label: 'Settings', icon: Settings },
     ],
   },
@@ -94,8 +102,13 @@ export function Sidebar({ mobileOpen = false, onClose }: { mobileOpen?: boolean;
     togglePinned()
   }
 
-  const isActive = (href: string) =>
-    pathname === href || (href !== '/overview' && pathname.startsWith(href))
+  // Highlight only the MOST specific matching item, so /ecommerce/products
+  // doesn't also light up /ecommerce.
+  const bestMatch = visibleGroups
+    .flatMap(g => g.items.map(it => it.href))
+    .filter(h => pathname === h || pathname.startsWith(h + '/'))
+    .sort((a, b) => b.length - a.length)[0]
+  const isActive = (href: string) => href === bestMatch
 
   return (
     <aside
