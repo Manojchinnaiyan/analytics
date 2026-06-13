@@ -272,15 +272,18 @@ func (h *ShopifyHandler) activatePixel(ctx context.Context, shop, token, project
 
 // ---- Theme app embed auto-config -------------------------------------------
 
-// Config (GET /shopify/config?shop=acme.myshopify.com) returns the store's
-// ingest key + ingest/replay URLs so the theme app embed needs zero manual key
-// entry — inspectuser.js fetches this on load and inits itself. Public + CORS-
-// open: the api_key is a publishable (write-only) ingest key, already visible in
-// the storefront once the embed runs, so serving it by shop domain is the same
-// exposure as any client-side analytics token. App-owned shop metafields can't
-// be used for this since Shopify made them private to the app in May 2025.
+// Config returns the store's ingest key + ingest/replay URLs so the theme app
+// embed needs zero manual key entry — inspectuser.js fetches it on load and
+// inits itself. It is reached ONLY through the Shopify App Proxy
+// (storefront `/apps/inspectuser/config` → here), and we require a valid proxy
+// `signature` so the request is provably from Shopify for a real storefront.
+// This stops an attacker from enumerating shop domains to harvest other
+// merchants' ingest keys (the previous open endpoint allowed exactly that).
+// The `shop` is taken from the signed params Shopify adds, not from the caller.
 func (h *ShopifyHandler) Config(c fiber.Ctx) error {
-	c.Set("Access-Control-Allow-Origin", "*")
+	if !h.verifyProxySignature(c) {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
 	shop := strings.ToLower(c.Query("shop"))
 	if !validShop(shop) {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid shop"})
@@ -354,21 +357,61 @@ func (h *ShopifyHandler) WebhookGDPR(c fiber.Ctx) error {
 // ---- Signature verification -------------------------------------------------
 
 // verifyQueryHMAC validates the `hmac` on the OAuth callback query string.
+// Shopify signs the RAW, percent-encoded query string (params sorted, joined by
+// "&", with hmac/signature removed) — so we must build the message from the raw
+// query bytes, NOT from a decoded param map. Decoding first (the previous
+// behaviour) both broke legitimate callbacks whose values contain encoded
+// characters and opened a canonicalization gap an attacker could exploit.
 func (h *ShopifyHandler) verifyQueryHMAC(c fiber.Ctx) bool {
 	got := c.Query("hmac")
 	if got == "" {
 		return false
 	}
+	raw := string(c.Request().URI().QueryString())
 	pairs := make([]string, 0, 8)
-	for k, v := range c.Queries() {
-		if k == "hmac" || k == "signature" {
+	for _, p := range strings.Split(raw, "&") {
+		if p == "" || strings.HasPrefix(p, "hmac=") || strings.HasPrefix(p, "signature=") {
 			continue
 		}
-		pairs = append(pairs, k+"="+v)
+		pairs = append(pairs, p)
 	}
 	sort.Strings(pairs)
 	mac := hmac.New(sha256.New, []byte(h.apiSecret))
 	mac.Write([]byte(strings.Join(pairs, "&")))
+	want := hex.EncodeToString(mac.Sum(nil))
+	return subtle.ConstantTimeCompare([]byte(got), []byte(want)) == 1
+}
+
+// verifyProxySignature validates the `signature` Shopify adds to App Proxy
+// requests. Unlike the OAuth/webhook HMACs, the proxy scheme sorts the params
+// by key and concatenates them as `key=value` with NO separator (multi-valued
+// params joined by `,`), then HMAC-SHA256 + lowercase hex. A request without a
+// valid signature did not come through Shopify and is rejected.
+func (h *ShopifyHandler) verifyProxySignature(c fiber.Ctx) bool {
+	got := c.Query("signature")
+	if got == "" {
+		return false
+	}
+	// Collect all query params except `signature`, joining repeats with ",".
+	grouped := map[string][]string{}
+	c.Request().URI().QueryArgs().VisitAll(func(k, v []byte) {
+		key := string(k)
+		if key == "signature" {
+			return
+		}
+		grouped[key] = append(grouped[key], string(v))
+	})
+	keys := make([]string, 0, len(grouped))
+	for k := range grouped {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	var msg strings.Builder
+	for _, k := range keys {
+		msg.WriteString(k + "=" + strings.Join(grouped[k], ","))
+	}
+	mac := hmac.New(sha256.New, []byte(h.apiSecret))
+	mac.Write([]byte(msg.String()))
 	want := hex.EncodeToString(mac.Sum(nil))
 	return subtle.ConstantTimeCompare([]byte(got), []byte(want)) == 1
 }

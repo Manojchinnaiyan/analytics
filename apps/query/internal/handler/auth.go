@@ -178,15 +178,27 @@ func (h *AuthHandler) Login(c fiber.Ctx) error {
 	})
 }
 
-// POST /v1/auth/refresh — issues a fresh token for a still-valid session,
-// letting the dashboard extend a session before the 24h token expires.
+// POST /v1/auth/refresh — issues a fresh token for a still-valid session.
+// We re-load the user from the DB rather than trusting the old token's claims,
+// so a deleted user can no longer roll their session forward, and a role/org
+// change takes effect on the next refresh (the dashboard refreshes on load)
+// instead of being frozen for the life of the long-lived token.
 func (h *AuthHandler) Refresh(c fiber.Ctx) error {
 	userID, _ := c.Locals("user_id").(string)
-	orgID, _ := c.Locals("org_id").(string)
-	role, _ := c.Locals("role").(string)
-	if userID == "" || orgID == "" {
+	if userID == "" {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthenticated"})
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var orgID, role string
+	if err := h.db.QueryRow(ctx,
+		`SELECT org_id, role FROM users WHERE id = $1`, userID,
+	).Scan(&orgID, &role); err != nil {
+		// User no longer exists (deleted) — refuse to extend the session.
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthenticated"})
+	}
+
 	token, err := auth.GenerateToken(userID, orgID, role, h.jwtSecret)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to generate token"})

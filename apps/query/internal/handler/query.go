@@ -51,11 +51,13 @@ func (h *QueryHandler) cohortFilter(projectID, cohortID string) string {
 	return " AND if(user_id != '', user_id, device_id) IN (" + cohortMemberSQL(projectID, def) + ")"
 }
 
-// escapeIdent strips single quotes from an identifier used in interpolated SQL.
+// escapeIdent strips single quotes AND backslashes from an identifier used in
+// interpolated SQL. Stripping only `'` is unsafe: a trailing `\` escapes the
+// closing quote (`\'`) and breaks out of the string literal (SQL injection).
 func escapeIdent(s string) string {
 	out := ""
 	for _, r := range s {
-		if r != '\'' {
+		if r != '\'' && r != '\\' {
 			out += string(r)
 		}
 	}

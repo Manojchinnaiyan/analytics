@@ -47,6 +47,13 @@ func (h *RedirectHandler) Go(c fiber.Ctx) error {
 		return c.Status(fiber.StatusNotFound).SendString("link not found")
 	}
 
+	// Only redirect to absolute http(s) URLs. Without this, a destination like
+	// `javascript:...`, `data:...`, or the scheme-relative `//evil.com` would
+	// turn this trusted domain into an open redirector for phishing.
+	if !safeRedirectTarget(cfg.Destination) {
+		return c.Status(fiber.StatusBadRequest).SendString("invalid link destination")
+	}
+
 	// Record the click (server-side, survives even if the visitor bounces).
 	h.rdb.Incr(ctx, "linkclicks:"+slug)
 
@@ -78,4 +85,17 @@ func (h *RedirectHandler) Go(c fiber.Ctx) error {
 	}
 
 	return c.Redirect().Status(fiber.StatusFound).To(loc)
+}
+
+// safeRedirectTarget reports whether dst is an absolute http(s) URL with a host.
+// Rejects javascript:/data:/mailto: schemes and scheme-relative `//host` URLs.
+func safeRedirectTarget(dst string) bool {
+	u, err := url.Parse(dst)
+	if err != nil {
+		return false
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return false
+	}
+	return u.Host != ""
 }

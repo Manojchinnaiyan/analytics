@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -31,6 +32,15 @@ func main() {
 	defer log.Sync()
 
 	cfg := config.Load()
+
+	// Fail fast on a weak/placeholder JWT secret: it signs every tenant's
+	// session, so a guessable value lets anyone forge an owner token for any
+	// org. Refuse to boot unless it's a strong, non-default value.
+	if reason := weakJWTSecret(cfg.JWTSecret); reason != "" {
+		log.Fatal("insecure JWT_SECRET — refusing to start",
+			zap.String("reason", reason),
+			zap.String("fix", "set JWT_SECRET to a random value, e.g. `openssl rand -hex 32`"))
+	}
 
 	// ClickHouse
 	chConn, err := clickhouse.Open(&clickhouse.Options{
@@ -500,7 +510,9 @@ func main() {
 	if shopifyHandler.Configured() {
 		app.Get("/shopify/install", shopifyHandler.Install)
 		app.Get("/shopify/callback", shopifyHandler.Callback)
-		app.Get("/shopify/config", shopifyHandler.Config)
+		// Reached via the Shopify App Proxy (storefront /apps/inspectuser/config);
+		// Config verifies the proxy signature so the ingest key isn't enumerable.
+		app.Get("/shopify/proxy/config", shopifyHandler.Config)
 		app.Post("/shopify/webhooks/app/uninstalled", shopifyHandler.WebhookUninstalled)
 		app.Post("/shopify/webhooks/customers/data_request", shopifyHandler.WebhookGDPR)
 		app.Post("/shopify/webhooks/customers/redact", shopifyHandler.WebhookGDPR)
@@ -560,4 +572,29 @@ func main() {
 
 	log.Info("shutting down query service")
 	app.Shutdown()
+}
+
+// knownWeakSecrets are placeholder values shipped in defaults/examples; a
+// deployment that still uses one is effectively unauthenticated.
+var knownWeakSecrets = map[string]bool{
+	"change_me_in_production":                          true,
+	"change_me_in_production_use_a_long_random_string": true,
+	"secret":       true,
+	"changeme":     true,
+	"your-secret":  true,
+	"jwt_secret":   true,
+}
+
+// weakJWTSecret returns a non-empty reason if the secret is unsafe to run with.
+func weakJWTSecret(s string) string {
+	if s == "" {
+		return "JWT_SECRET is empty"
+	}
+	if knownWeakSecrets[strings.ToLower(strings.TrimSpace(s))] {
+		return "JWT_SECRET is a known placeholder value"
+	}
+	if len(s) < 32 {
+		return "JWT_SECRET is shorter than 32 bytes"
+	}
+	return ""
 }

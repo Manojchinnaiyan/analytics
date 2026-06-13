@@ -27,5 +27,14 @@ api_version = "2026-07"
   customer_deletion_url     = "https://api.inspectuser.com/shopify/webhooks/customers/redact"
   shop_deletion_url         = "https://api.inspectuser.com/shopify/webhooks/shop/redact"
 
+# App Proxy: the storefront fetches /apps/inspectuser/config, which Shopify
+# proxies (with a signed `signature`) to {url}/config. The theme embed uses this
+# to fetch its ingest key, so the key is never served from an open, enumerable
+# endpoint — only Shopify-signed storefront requests can retrieve it.
+[app_proxy]
+url = "https://api.inspectuser.com/shopify/proxy"
+subpath = "inspectuser"
+prefix = "apps"
+
 [build]
 automatically_update_urls_on_dev = true

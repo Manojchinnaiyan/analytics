@@ -1,10 +1,9 @@
 {%- comment -%}
   InspectUser app embed — loads the full SDK in the real page (autocapture + replay).
-  Config (API key + ingest/replay URLs) is fetched automatically from the InspectUser
-  API keyed by the shop domain, so the merchant just turns the embed on. The manual
-  block settings below are only a fallback / override.
+  Config (API key + ingest/replay URLs) is fetched automatically via the Shopify
+  App Proxy (/apps/inspectuser/config), so the merchant just turns the embed on.
+  The manual block settings below are only a fallback / override.
 {%- endcomment -%}
-{%- assign iu_config = block.settings.config_url | default: 'https://api.inspectuser.com' -%}
 <script src="{{ 'inspectuser.js' | asset_url }}" defer></script>
 <script>
   window.addEventListener('load', function () {
@@ -37,8 +36,10 @@
 
     if (manualKey) { start(manualKey, manualIngest, manualReplay); return; }
 
-    // Auto-config: fetch the project's key + URLs by shop domain.
-    fetch({{ iu_config | json }} + '/shopify/config?shop={{ shop.permanent_domain }}')
+    // Auto-config via the Shopify App Proxy: this same-origin request is signed
+    // by Shopify and proxied to our /shopify/proxy/config, which returns the
+    // project's key only for a verified storefront (no open, enumerable endpoint).
+    fetch('/apps/inspectuser/config')
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (cfg) { if (cfg && cfg.api_key) start(cfg.api_key, cfg.ingest_url, cfg.replay_url); })
       .catch(function () {});
@@ -58,8 +59,7 @@
     { "type": "checkbox", "id": "session_replay", "label": "Enable session replay", "default": true },
     { "type": "range", "id": "sample_rate", "label": "Session sample rate", "min": 0.1, "max": 1.0, "step": 0.1, "default": 1.0 },
     { "type": "text", "id": "ingest_url", "label": "Ingest URL", "default": "https://ingest.inspectuser.com" },
-    { "type": "text", "id": "replay_url", "label": "Replay URL", "default": "https://api.inspectuser.com" },
-    { "type": "text", "id": "config_url", "label": "Config API URL", "default": "https://api.inspectuser.com" }
+    { "type": "text", "id": "replay_url", "label": "Replay URL", "default": "https://api.inspectuser.com" }
   ]
 }
 {% endschema %}

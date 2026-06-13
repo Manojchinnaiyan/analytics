@@ -120,7 +120,10 @@ func (h *EventHandler) BatchIngest(c fiber.Ctx) error {
 		return c.JSON(fiber.Map{"code": 200, "events_ingested": 0, "events_dropped": len(req.Events), "reason": "bot"})
 	}
 
-	projectID := c.Locals("project_id").(string)
+	projectID, ok := c.Locals("project_id").(string)
+	if !ok || projectID == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
 	now := time.Now().UnixMilli()
 
 	// Server-side identity anchor: a first-party, HTTP-only cookie that survives
@@ -193,7 +196,10 @@ func (h *EventHandler) BatchIngest(c fiber.Ctx) error {
 		// Exactly-once: drop a replayed event whose insert_id we've already seen
 		// in the last 7 days (retries, double-fires). SETNX returns false on dup.
 		if e.InsertID != "" {
-			if ok, err := h.rdb.SetNX(dctx, "iid:"+e.InsertID, 1, 7*24*time.Hour).Result(); err == nil && !ok {
+			// Namespace the dedup key by project — otherwise one tenant could
+			// pre-claim another tenant's insert_ids and silently suppress their
+			// events (cross-tenant data denial).
+			if ok, err := h.rdb.SetNX(dctx, "iid:"+projectID+":"+e.InsertID, 1, 7*24*time.Hour).Result(); err == nil && !ok {
 				dropped++
 				continue
 			}
@@ -280,8 +286,14 @@ func (h *EventHandler) Identify(c fiber.Ctx) error {
 	if err := c.Bind().JSON(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid JSON"})
 	}
+	if err := req.ValidateIdentify(); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
 
-	projectID := c.Locals("project_id").(string)
+	projectID, ok := c.Locals("project_id").(string)
+	if !ok || projectID == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthorized"})
+	}
 	now := time.Now().UnixMilli()
 
 	events := make([]interface{}, len(req.Events))

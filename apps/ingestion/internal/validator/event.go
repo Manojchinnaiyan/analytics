@@ -42,6 +42,17 @@ type BatchRequest struct {
 	Events []Event `json:"events"`
 }
 
+// Size caps — bound memory/storage and keep any single event well under Kafka's
+// per-record limit. An attacker (or buggy SDK) can't blow up the worker/ClickHouse
+// downstream with oversized fields, unbounded property maps, or huge values.
+const (
+	maxEvents       = 2000
+	maxIDLen        = 256  // user_id, device_id, session_id, insert_id, link_code
+	maxEventTypeLen = 512  // event_type / string identifiers
+	maxProps        = 512  // entries in event_properties / user_properties
+	maxStrValueLen  = 8192 // any single string property value
+)
+
 func (r *BatchRequest) Validate() error {
 	if r.APIKey == "" {
 		return errors.New("api_key is required")
@@ -49,23 +60,84 @@ func (r *BatchRequest) Validate() error {
 	if len(r.Events) == 0 {
 		return errors.New("events array is empty")
 	}
-	if len(r.Events) > 2000 {
+	if len(r.Events) > maxEvents {
 		return errors.New("batch size exceeds 2000 events")
 	}
-	for i, e := range r.Events {
-		if e.EventType == "" {
-			return errors.New("event_type is required on every event")
+	for i := range r.Events {
+		if err := r.Events[i].validate(); err != nil {
+			return err
 		}
+		// Clamp event time to ±7 days to avoid garbage timestamps
+		if e := &r.Events[i]; e.EventTime != nil {
+			t := time.UnixMilli(*e.EventTime)
+			if t.After(time.Now().Add(7*24*time.Hour)) ||
+				t.Before(time.Now().Add(-7*24*time.Hour)) {
+				e.EventTime = nil
+			}
+		}
+	}
+	return nil
+}
+
+// ValidateIdentify bounds an identify batch. event_type is set server-side to
+// "$identify", so it is not required here, but batch size, id lengths, and
+// property caps are enforced exactly as for normal ingest.
+func (r *BatchRequest) ValidateIdentify() error {
+	if len(r.Events) == 0 {
+		return errors.New("events array is empty")
+	}
+	if len(r.Events) > maxEvents {
+		return errors.New("batch size exceeds 2000 events")
+	}
+	for i := range r.Events {
+		e := &r.Events[i]
 		if e.UserID == "" && e.DeviceID == "" {
 			return errors.New("user_id or device_id required on every event")
 		}
-		// Clamp event time to ±7 days to avoid garbage timestamps
-		if e.EventTime != nil {
-			t := time.UnixMilli(*e.EventTime)
-			if t.After(time.Now().Add(7 * 24 * time.Hour)) ||
-				t.Before(time.Now().Add(-7 * 24 * time.Hour)) {
-				r.Events[i].EventTime = nil
-			}
+		if len(e.UserID) > maxIDLen || len(e.DeviceID) > maxIDLen ||
+			len(e.SessionID) > maxIDLen || len(e.InsertID) > maxIDLen {
+			return errors.New("id field too long")
+		}
+		if err := boundProps(e.Properties); err != nil {
+			return err
+		}
+		if err := boundProps(e.UserProperties); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// validate enforces presence + size caps on a single event.
+func (e *Event) validate() error {
+	if e.EventType == "" {
+		return errors.New("event_type is required on every event")
+	}
+	if e.UserID == "" && e.DeviceID == "" {
+		return errors.New("user_id or device_id required on every event")
+	}
+	if len(e.EventType) > maxEventTypeLen {
+		return errors.New("event_type too long")
+	}
+	if len(e.UserID) > maxIDLen || len(e.DeviceID) > maxIDLen ||
+		len(e.SessionID) > maxIDLen || len(e.InsertID) > maxIDLen ||
+		len(e.LinkCode) > maxIDLen {
+		return errors.New("id field too long")
+	}
+	if err := boundProps(e.Properties); err != nil {
+		return err
+	}
+	return boundProps(e.UserProperties)
+}
+
+// boundProps caps the number of property keys and the length of any string value.
+func boundProps(p map[string]interface{}) error {
+	if len(p) > maxProps {
+		return errors.New("too many properties")
+	}
+	for _, v := range p {
+		if s, ok := v.(string); ok && len(s) > maxStrValueLen {
+			return errors.New("property value too large")
 		}
 	}
 	return nil

@@ -280,11 +280,14 @@ func metricExpression(metric, property string) string {
 	}
 }
 
-// escapeProp strips single quotes to keep the interpolated property name safe.
+// escapeProp strips single quotes AND backslashes to keep an interpolated
+// property name safe inside a single-quoted ClickHouse string literal. Stripping
+// only `'` is insufficient: a trailing `\` would escape the closing quote (`\'`)
+// and let the value break out of the literal (SQL injection).
 func escapeProp(s string) string {
 	out := make([]rune, 0, len(s))
 	for _, r := range s {
-		if r != '\'' {
+		if r != '\'' && r != '\\' {
 			out = append(out, r)
 		}
 	}
@@ -323,7 +326,8 @@ func escapeVal(v interface{}) string {
 	s := fmt.Sprintf("%v", v)
 	out := make([]rune, 0, len(s))
 	for _, r := range s {
-		if r != '\'' {
+		// Strip both ' and \ — see escapeProp; a lone \ enables `\'` breakout.
+		if r != '\'' && r != '\\' {
 			out = append(out, r)
 		}
 	}

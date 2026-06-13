@@ -79,17 +79,15 @@ func main() {
 	app.Get("/go/:slug", redirectHandler.Go) // smart-link redirect (legacy path)
 	app.Get("/:slug", redirectHandler.Go)     // clean root-level short link (go.<domain>/<slug>)
 
-	// Per-IP rate limit on ingestion (SDKs batch, so this is generous for
-	// legitimate use but caps abusive floods).
+	// Per-IP rate limit on ingestion, applied BEFORE auth. Keying on the client
+	// IP (not a client-supplied header) means an attacker can't bypass the limit
+	// by rotating a random X-API-Key per request — which previously let a single
+	// host flood Redis with auth lookups unthrottled. Events originate from
+	// end-user browsers (each its own IP), so a per-IP cap fits legitimate use.
 	ingestLimiter := limiter.New(limiter.Config{
-		Max:        600,
-		Expiration: time.Minute,
-		KeyGenerator: func(c fiber.Ctx) string {
-			if k := c.Get("X-API-Key"); k != "" {
-				return k
-			}
-			return c.IP()
-		},
+		Max:          600,
+		Expiration:   time.Minute,
+		KeyGenerator: func(c fiber.Ctx) string { return c.IP() },
 		LimitReached: func(c fiber.Ctx) error {
 			return c.Status(fiber.StatusTooManyRequests).JSON(fiber.Map{"error": "rate limit exceeded"})
 		},

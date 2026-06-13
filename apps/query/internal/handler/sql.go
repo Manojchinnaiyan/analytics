@@ -25,8 +25,42 @@ func NewSQLHandler(ch clickhouse.Conn, db *pgxpool.Pool, log *zap.Logger) *SQLHa
 }
 
 // forbidden statements — this is a read-only analytics console.
-var forbiddenSQL = regexp.MustCompile(`(?i)\b(insert|alter|drop|delete|update|create|truncate|rename|attach|detach|optimize|grant|revoke|system|kill|set\s)\b`)
+// `settings`/`set` are blocked so the user query cannot override the
+// server-side tenant filter (additional_table_filters) we inject below.
+var forbiddenSQL = regexp.MustCompile(`(?i)\b(insert|alter|drop|delete|update|create|truncate|rename|attach|detach|optimize|grant|revoke|system|kill|set\s|settings)\b`)
+
+// Block table functions that can read external/other hosts or files — these
+// would let a console user bypass tenant scoping and exfiltrate or SSRF.
+var forbiddenTableFns = regexp.MustCompile(`(?i)\b(url|urls|remote|remotesecure|cluster|clusterallreplicas|s3|s3cluster|file|hdfs|hdfscluster|mysql|postgresql|mongodb|jdbc|odbc|redis|azureblobstorage|deltalake|hudi|iceberg|sqlite|merge|input|infile|outfile|gcs)\s*\(`)
+
 var limitClause = regexp.MustCompile(`(?i)\blimit\s+\d+`)
+
+// tenantTables are the ClickHouse tables that hold per-project data; every
+// console query gets a forced `project_id = '<caller>'` filter on each of them
+// (both fully-qualified and bare, to match either default-database setting).
+var tenantTables = []string{
+	"events", "sessions", "user_profiles", "mv_daily_event_counts",
+	"session_replays", "replay_index",
+}
+
+// tenantTableFilters builds the ClickHouse `additional_table_filters` Map literal
+// that pins every tenant table to the caller's project_id. ClickHouse applies
+// this filter to the named tables wherever they appear (including subqueries),
+// so the user's SQL cannot read another tenant's rows regardless of what it says.
+func tenantTableFilters(projectID string) string {
+	// projectID is already authorized by ProjectAuthz; sanitize defensively
+	// for the string literal (project ids are UUIDs, so this is belt-and-braces).
+	pid := strings.NewReplacer("'", "", "\\", "").Replace(projectID)
+	filter := `project_id = \'` + pid + `\'`
+	entries := make([]string, 0, len(tenantTables)*2)
+	for _, t := range tenantTables {
+		entries = append(entries,
+			`'inspectuser.`+t+`':'`+filter+`'`,
+			`'`+t+`':'`+filter+`'`,
+		)
+	}
+	return "{" + strings.Join(entries, ",") + "}"
+}
 
 // POST /v1/projects/:id/sql  body: {query}
 // Runs a read-only SELECT against ClickHouse with hard caps. Only SELECT/WITH is
@@ -52,17 +86,26 @@ func (h *SQLHandler) Run(c fiber.Ctx) error {
 	if forbiddenSQL.MatchString(q) {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "only read-only queries are allowed"})
 	}
+	if forbiddenTableFns.MatchString(q) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "external table functions are not allowed"})
+	}
 	if !limitClause.MatchString(q) {
 		q += " LIMIT 1000"
 	}
 
 	// Read-only execution with tight resource caps. readonly=2 forbids writes
 	// but still allows us to set the resource limits below.
+	//
+	// additional_table_filters pins every tenant table to THIS project's id,
+	// enforced by ClickHouse no matter what the user's SQL says — this is what
+	// stops a console user from reading other tenants' rows. The user query
+	// cannot override it because `settings`/`set` are blocked above.
 	ctx := clickhouse.Context(c.Context(), clickhouse.WithSettings(clickhouse.Settings{
-		"readonly":             "2",
-		"max_execution_time":   15,
-		"max_result_rows":      "10000",
-		"result_overflow_mode": "break",
+		"readonly":                 "2",
+		"max_execution_time":       15,
+		"max_result_rows":          "10000",
+		"result_overflow_mode":     "break",
+		"additional_table_filters": tenantTableFilters(c.Params("id")),
 	}))
 
 	start := time.Now()

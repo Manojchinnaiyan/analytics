@@ -5,7 +5,25 @@
 	auto_https off
 }
 
+# Browser security headers for the dashboard + marketing site. CSP keeps
+# 'unsafe-inline'/'unsafe-eval' because Next.js needs them (no nonce wiring),
+# but still blocks third-party script origins, framing, base-uri hijacking and
+# object embeds, and restricts XHR/fetch to our own APIs — shrinking the XSS
+# blast radius. connect-src/img-src allow our APIs and the icon/avatar CDNs.
+(security_headers) {
+	header {
+		-Server
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		X-Frame-Options "DENY"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()"
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://{$API_DOMAIN} https://{$INGEST_DOMAIN}; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+	}
+}
+
 http://{$APP_DOMAIN} {
+	import security_headers
 	reverse_proxy dashboard:3000
 }
 
@@ -26,5 +44,6 @@ http://{$SHORTLINK_DOMAIN:go.inspectuser.com} {
 # the public landing page at /). Short links moved to <customer-domain>/?il=<code>,
 # so the apex no longer needs the redirect handler.
 http://inspectuser.com, http://www.inspectuser.com {
+	import security_headers
 	reverse_proxy dashboard:3000
 }
