@@ -50,10 +50,14 @@ services:
     volumes:
       - kafka_data:/var/lib/kafka
     healthcheck:
-      test: ["CMD", "kafka-topics", "--bootstrap-server", "kafka:29092", "--list"]
+      # Lightweight TCP check on the internal listener. The old kafka-topics
+      # check spins up a JVM each run (~5-10s) and intermittently exceeded the
+      # timeout → false "unhealthy", which then blocked dependent deploys.
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/localhost/29092"]
       interval: 30s
       timeout: 10s
       retries: 5
+      start_period: 40s
     restart: unless-stopped
 
   postgres:
