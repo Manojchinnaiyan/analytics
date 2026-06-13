@@ -353,7 +353,7 @@ func main() {
 	authRoutes.Get("/sso/callback", ssoHandler.Callback)
 
 	// Protected routes
-	protected := app.Group("/v1", middleware.JWTAuth(cfg.JWTSecret), middleware.AuditLog(db), middleware.ProjectAuthz(db, rdb))
+	protected := app.Group("/v1", middleware.JWTAuth(cfg.JWTSecret), middleware.AuditLog(db), middleware.ProjectAuthz(db, rdb), middleware.QueryCache(rdb, 30*time.Second, log))
 
 	protected.Get("/me", authHandler.Me)
 	protected.Post("/auth/refresh", authHandler.Refresh)
