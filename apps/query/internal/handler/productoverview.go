@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/ClickHouse/clickhouse-go/v2"
@@ -67,77 +68,97 @@ func (h *ProductHandler) ProductOverview(c fiber.Ctx) error {
 	tz := h.projectTZ(ctx, projectID)
 	lt := "toDate(now(), '" + tz + "')" // local "today" as a Date
 
-	// 1) Headline active-user metrics. DAU is the LAST COMPLETE local day (so the
-	// headline isn't a half-empty partial day); dau_today is today-so-far. WAU/MAU
-	// stay rolling. Deltas compare like-for-like complete periods.
-	var dau, dauToday, wau, mau, totalEvents, uniqueUsers uint64
-	var dauPrev, wauPrev, mauPrev uint64
-	var lastEvent time.Time
-	_ = h.ch.QueryRow(ctx, `
-		SELECT
-			uniqIf(id, d = `+lt+` - 1)                                           AS dau,
-			uniqIf(id, d = `+lt+`)                                               AS dau_today,
-			uniqIf(id, ts >= now() - INTERVAL 7 DAY)                             AS wau,
-			uniqIf(id, ts >= now() - INTERVAL 30 DAY)                            AS mau,
-			uniqIf(id, d = `+lt+` - 2)                                           AS dau_prev,
-			uniqIf(id, ts >= now() - INTERVAL 14 DAY AND ts < now() - INTERVAL 7 DAY)  AS wau_prev,
-			uniqIf(id, ts >= now() - INTERVAL 60 DAY AND ts < now() - INTERVAL 30 DAY) AS mau_prev,
-			count()                                                              AS total_events,
-			max(ts)                                                              AS last_event,
-			uniq(id)                                                             AS unique_users
-		FROM (
-			SELECT `+identityExpr+` AS id, event_time AS ts, toDate(event_time, '`+tz+`') AS d
-			FROM inspectuser.events WHERE project_id = ?
-		)
-	`, projectID).Scan(&dau, &dauToday, &wau, &mau, &dauPrev, &wauPrev, &mauPrev, &totalEvents, &lastEvent, &uniqueUsers)
+	// All metrics below are independent reads — run them CONCURRENTLY (each
+	// goroutine writes only its own variable(s); no shared mutable state). Cuts
+	// wall-clock from the SUM of ~11 ClickHouse queries to roughly the slowest.
+	var (
+		dau, dauToday, wau, mau, totalEvents, uniqueUsers uint64
+		dauPrev, wauPrev, mauPrev                         uint64
+		lastEvent                                         time.Time
+		newInRange, newToday, newPrev                     uint64
+		avgSession                                        float64
+		evTot, usrTot, sessTot                            uint64
+		trend, retention, topEvents                       any
+		bdCountry, bdPlatform, bdDevice                   any
+	)
 
-	// 2) New users — in the selected range vs the immediately-prior range.
-	// First-seen day uses the project tz so "new users" shares DAU's local day.
-	var newInRange, newToday, newPrev uint64
-	_ = h.ch.QueryRow(ctx, `
-		SELECT
-			countIf(first_day >= `+lt+` - ?)                              AS n,
-			countIf(first_day = `+lt+`)                                   AS ntoday,
-			countIf(first_day >= `+lt+` - ? AND first_day < `+lt+` - ?)   AS nprev
-		FROM (
-			SELECT `+identityExpr+` AS id, toDate(min(event_time), '`+tz+`') AS first_day
-			FROM inspectuser.events WHERE project_id = ? GROUP BY id
-		)
-	`, win, int64(2*days-1), win, projectID).Scan(&newInRange, &newToday, &newPrev)
+	var wg sync.WaitGroup
+	run := func(fn func()) { wg.Add(1); go func() { defer wg.Done(); fn() }() }
 
-	// 3) Average session duration (seconds) over the selected range.
-	var avgSession float64
-	_ = h.ch.QueryRow(ctx, `
-		SELECT ifNull(avg(dur), 0) FROM (
-			SELECT dateDiff('second', min(event_time), max(event_time)) AS dur
-			FROM inspectuser.events
-			WHERE project_id = ? AND session_id != '' AND event_time >= today() - ?
-			GROUP BY session_id
-			HAVING dur >= 0
-		)
-	`, projectID, win).Scan(&avgSession)
+	// Headline active-user metrics (DAU = last complete local day; WAU/MAU rolling).
+	run(func() {
+		_ = h.ch.QueryRow(ctx, `
+			SELECT
+				uniqIf(id, d = `+lt+` - 1)                                           AS dau,
+				uniqIf(id, d = `+lt+`)                                               AS dau_today,
+				uniqIf(id, ts >= now() - INTERVAL 7 DAY)                             AS wau,
+				uniqIf(id, ts >= now() - INTERVAL 30 DAY)                            AS mau,
+				uniqIf(id, d = `+lt+` - 2)                                           AS dau_prev,
+				uniqIf(id, ts >= now() - INTERVAL 14 DAY AND ts < now() - INTERVAL 7 DAY)  AS wau_prev,
+				uniqIf(id, ts >= now() - INTERVAL 60 DAY AND ts < now() - INTERVAL 30 DAY) AS mau_prev,
+				count()                                                              AS total_events,
+				max(ts)                                                              AS last_event,
+				uniq(id)                                                             AS unique_users
+			FROM (
+				SELECT `+identityExpr+` AS id, event_time AS ts, toDate(event_time, '`+tz+`') AS d
+				FROM inspectuser.events WHERE project_id = ?
+			)
+		`, projectID).Scan(&dau, &dauToday, &wau, &mau, &dauPrev, &wauPrev, &mauPrev, &totalEvents, &lastEvent, &uniqueUsers)
+	})
+	// New users — selected range vs the immediately-prior range.
+	run(func() {
+		_ = h.ch.QueryRow(ctx, `
+			SELECT
+				countIf(first_day >= `+lt+` - ?)                              AS n,
+				countIf(first_day = `+lt+`)                                   AS ntoday,
+				countIf(first_day >= `+lt+` - ? AND first_day < `+lt+` - ?)   AS nprev
+			FROM (
+				SELECT `+identityExpr+` AS id, toDate(min(event_time), '`+tz+`') AS first_day
+				FROM inspectuser.events WHERE project_id = ? GROUP BY id
+			)
+		`, win, int64(2*days-1), win, projectID).Scan(&newInRange, &newToday, &newPrev)
+	})
+	// Average session duration (seconds) over the selected range.
+	run(func() {
+		_ = h.ch.QueryRow(ctx, `
+			SELECT ifNull(avg(dur), 0) FROM (
+				SELECT dateDiff('second', min(event_time), max(event_time)) AS dur
+				FROM inspectuser.events
+				WHERE project_id = ? AND session_id != '' AND event_time >= today() - ?
+				GROUP BY session_id
+				HAVING dur >= 0
+			)
+		`, projectID, win).Scan(&avgSession)
+	})
+	// Engagement depth: events/user, sessions/user.
+	run(func() {
+		_ = h.ch.QueryRow(ctx, `
+			SELECT count(), uniq(`+identityExpr+`), uniqIf(session_id, session_id != '')
+			FROM inspectuser.events WHERE project_id = ? AND event_time >= today() - ?
+		`, projectID, win).Scan(&evTot, &usrTot, &sessTot)
+	})
+	run(func() { trend = h.trendSeries(ctx, projectID, tz, days) })
+	run(func() { retention = h.retentionSnapshot(ctx, projectID, tz, days) })
+	run(func() { topEvents = h.topEvents(ctx, projectID, win) })
+	run(func() { bdCountry = h.breakdown(ctx, projectID, "country", win) })
+	run(func() { bdPlatform = h.breakdown(ctx, projectID, "platform", win) })
+	run(func() { bdDevice = h.breakdown(ctx, projectID, "device_type", win) })
+
+	wg.Wait()
+
+	// Derived values (pure Go) — once all reads are in.
 	if math.IsNaN(avgSession) || math.IsInf(avgSession, 0) {
 		avgSession = 0 // avg() over an empty window returns NaN, which breaks JSON
 	}
-
-	// 4) Engagement depth over the range: events/user, sessions/user, sessions/day.
-	var evTot, usrTot, sessTot uint64
-	_ = h.ch.QueryRow(ctx, `
-		SELECT count(), uniq(`+identityExpr+`), uniqIf(session_id, session_id != '')
-		FROM inspectuser.events WHERE project_id = ? AND event_time >= today() - ?
-	`, projectID, win).Scan(&evTot, &usrTot, &sessTot)
 	eventsPerUser, sessionsPerUser := 0.0, 0.0
 	if usrTot > 0 {
 		eventsPerUser = float64(evTot) / float64(usrTot)
 		sessionsPerUser = float64(sessTot) / float64(usrTot)
 	}
-
 	stickiness := 0.0
 	if mau > 0 {
 		stickiness = float64(dau) / float64(mau)
 	}
-
-	// pctDelta returns the fractional change vs a prior value (nil if no baseline).
 	pctDelta := func(cur, prev uint64) *float64 {
 		if prev == 0 {
 			return nil
@@ -162,16 +183,16 @@ func (h *ProductHandler) ProductOverview(c fiber.Ctx) error {
 		"sessions_per_user":   sessionsPerUser,
 		"stickiness":          stickiness,
 		"total_events":        totalEvents,
-		"trend":               h.trendSeries(ctx, projectID, tz, days),
-		"retention":           h.retentionSnapshot(ctx, projectID, tz, days),
-		"top_events":          h.topEvents(ctx, projectID, win),
+		"trend":               trend,
+		"retention":           retention,
+		"top_events":          topEvents,
 		"delta_dau":           pctDelta(dau, dauPrev),
 		"delta_wau":           pctDelta(wau, wauPrev),
 		"delta_mau":           pctDelta(mau, mauPrev),
 		"delta_new_users":     pctDelta(newInRange, newPrev),
-		"breakdown_country":   h.breakdown(ctx, projectID, "country", win),
-		"breakdown_platform":  h.breakdown(ctx, projectID, "platform", win),
-		"breakdown_device":    h.breakdown(ctx, projectID, "device_type", win),
+		"breakdown_country":   bdCountry,
+		"breakdown_platform":  bdPlatform,
+		"breakdown_device":    bdDevice,
 	})
 }
 

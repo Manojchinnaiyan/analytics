@@ -31,7 +31,8 @@ func cacheable(c fiber.Ctx) bool {
 		if strings.Contains(p, "/events/first") || strings.Contains(p, "/live") {
 			return false
 		}
-		return strings.Contains(p, "/web-analytics") || strings.Contains(p, "/web/")
+		return strings.Contains(p, "/web-analytics") || strings.Contains(p, "/web/") ||
+			strings.Contains(p, "/overview") || strings.Contains(p, "/product-overview")
 	case fiber.MethodPost:
 		return cacheablePOST[p]
 	}

@@ -5,6 +5,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
@@ -71,75 +72,89 @@ func (h *ProductHandler) WebAnalytics(c fiber.Ctx) error {
 	base := `project_id = ? AND event_type = 'Page Viewed' AND event_time >= toDate('` + since + `')` + flt
 	prevBase := `project_id = ? AND event_type = 'Page Viewed' AND event_time >= toDate('` + prevStart + `') AND event_time < toDate('` + since + `')` + flt
 
-	// 1) Headline counters (current + previous window for deltas).
-	var pageviews, sessions, visitors uint64
-	_ = h.ch.QueryRow(ctx, `SELECT count(), uniqIf(session_id, session_id != ''), uniq(`+identityExpr+`) FROM inspectuser.events WHERE `+base, projectID).
-		Scan(&pageviews, &sessions, &visitors)
+	// All metrics below are independent reads. Run them CONCURRENTLY instead of
+	// one-after-another — each goroutine writes only its own variable(s), so there
+	// is no shared mutable state and no data race. Wall-clock drops from the SUM of
+	// ~15 ClickHouse queries (~2-3s) to roughly the slowest single one.
+	var (
+		pageviews, sessions, visitors uint64
+		pvPrev, sPrev, vPrev          uint64
+		newVisitors                   uint64
+		liveVisitors                  uint64
+		bounced, totalSessions        uint64
+		pagesPerSession, avgDuration  float64
+		avgEngagement                 float64
+		byDate                        = map[string]map[string]any{}
+		topPages, landing, exit       []map[string]any
+		referrers                     []map[string]any
+		countries, browsers           []map[string]any
+		osBreakdown, devices          []map[string]any
+	)
 
-	var pvPrev, sPrev, vPrev uint64
-	_ = h.ch.QueryRow(ctx, `SELECT count(), uniqIf(session_id, session_id != ''), uniq(`+identityExpr+`) FROM inspectuser.events WHERE `+prevBase, projectID).
-		Scan(&pvPrev, &sPrev, &vPrev)
+	var wg sync.WaitGroup
+	run := func(fn func()) { wg.Add(1); go func() { defer wg.Done(); fn() }() }
 
-	// New vs returning: among the (filtered) visitors, how many are globally new
-	// (first-ever event in this window).
-	var newVisitors uint64
-	_ = h.ch.QueryRow(ctx, `
-		SELECT uniqIf(v.id, g.fs >= toDate('`+since+`'))
-		FROM (SELECT DISTINCT `+identityExpr+` AS id FROM inspectuser.events WHERE `+base+`) v
-		INNER JOIN (
-			SELECT `+identityExpr+` AS id, min(toDate(event_time)) AS fs
-			FROM inspectuser.events WHERE project_id = ? GROUP BY id
-		) g ON v.id = g.id
-	`, projectID, projectID).Scan(&newVisitors)
-	returningVisitors := uint64(0)
-	if visitors > newVisitors {
-		returningVisitors = visitors - newVisitors
-	}
-
+	// Headline counters (current + previous window for deltas).
+	run(func() {
+		_ = h.ch.QueryRow(ctx, `SELECT count(), uniqIf(session_id, session_id != ''), uniq(`+identityExpr+`) FROM inspectuser.events WHERE `+base, projectID).
+			Scan(&pageviews, &sessions, &visitors)
+	})
+	run(func() {
+		_ = h.ch.QueryRow(ctx, `SELECT count(), uniqIf(session_id, session_id != ''), uniq(`+identityExpr+`) FROM inspectuser.events WHERE `+prevBase, projectID).
+			Scan(&pvPrev, &sPrev, &vPrev)
+	})
+	// New vs returning: among the (filtered) visitors, how many are globally new.
+	run(func() {
+		_ = h.ch.QueryRow(ctx, `
+			SELECT uniqIf(v.id, g.fs >= toDate('`+since+`'))
+			FROM (SELECT DISTINCT `+identityExpr+` AS id FROM inspectuser.events WHERE `+base+`) v
+			INNER JOIN (
+				SELECT `+identityExpr+` AS id, min(toDate(event_time)) AS fs
+				FROM inspectuser.events WHERE project_id = ? GROUP BY id
+			) g ON v.id = g.id
+		`, projectID, projectID).Scan(&newVisitors)
+	})
 	// Realtime: distinct visitors active in the last 5 minutes (scoped to filters).
-	var liveVisitors uint64
-	_ = h.ch.QueryRow(ctx,
-		`SELECT uniq(`+identityExpr+`) FROM inspectuser.events
-		 WHERE project_id = ? AND event_time >= now() - INTERVAL 5 MINUTE`+flt,
-		projectID).Scan(&liveVisitors)
-
-	// 2) Per-session stats → bounce rate, pages/session, avg duration.
-	var bounced, totalSessions uint64
-	var pagesPerSession, avgDuration float64
-	_ = h.ch.QueryRow(ctx, `
-		SELECT countIf(pvs = 1), count(), ifNull(avg(pvs), 0), ifNull(avg(dur), 0)
-		FROM (
-			SELECT session_id, count() AS pvs,
-			       dateDiff('second', min(event_time), max(event_time)) AS dur
-			FROM inspectuser.events WHERE `+base+` AND session_id != ''
-			GROUP BY session_id
-		)
-	`, projectID).Scan(&bounced, &totalSessions, &pagesPerSession, &avgDuration)
-	bounceRate := 0.0
-	if totalSessions > 0 {
-		bounceRate = float64(bounced) / float64(totalSessions)
-	}
-
-	// Accurate engaged time per session (sum of foreground time across pages) —
-	// from Page Engagement events, not first→last (which counts idle/background).
-	var avgEngagement float64
-	_ = h.ch.QueryRow(ctx, `
-		SELECT ifNull(avg(sess_ms), 0) FROM (
-			SELECT session_id, sum(JSONExtractInt(properties,'engaged_ms')) AS sess_ms
-			FROM inspectuser.events
-			WHERE project_id = ? AND event_type = 'Page Engagement' AND session_id != ''
-			  AND event_time >= toDate('`+since+`')`+flt+`
-			GROUP BY session_id
-		)
-	`, projectID).Scan(&avgEngagement)
-
-	// 3) Daily pageviews + sessions + visitors trend, zero-filled.
-	byDate := map[string]map[string]any{}
-	if rows, err := h.ch.Query(ctx, `
-		SELECT toDate(event_time) AS d, count() AS pv, uniqIf(session_id, session_id != '') AS s, uniq(`+identityExpr+`) AS v
-		FROM inspectuser.events WHERE `+base+`
-		GROUP BY d ORDER BY d ASC
-	`, projectID); err == nil {
+	run(func() {
+		_ = h.ch.QueryRow(ctx,
+			`SELECT uniq(`+identityExpr+`) FROM inspectuser.events
+			 WHERE project_id = ? AND event_time >= now() - INTERVAL 5 MINUTE`+flt,
+			projectID).Scan(&liveVisitors)
+	})
+	// Per-session stats → bounce rate, pages/session, avg duration.
+	run(func() {
+		_ = h.ch.QueryRow(ctx, `
+			SELECT countIf(pvs = 1), count(), ifNull(avg(pvs), 0), ifNull(avg(dur), 0)
+			FROM (
+				SELECT session_id, count() AS pvs,
+				       dateDiff('second', min(event_time), max(event_time)) AS dur
+				FROM inspectuser.events WHERE `+base+` AND session_id != ''
+				GROUP BY session_id
+			)
+		`, projectID).Scan(&bounced, &totalSessions, &pagesPerSession, &avgDuration)
+	})
+	// Accurate engaged time per session (sum of foreground time across pages).
+	run(func() {
+		_ = h.ch.QueryRow(ctx, `
+			SELECT ifNull(avg(sess_ms), 0) FROM (
+				SELECT session_id, sum(JSONExtractInt(properties,'engaged_ms')) AS sess_ms
+				FROM inspectuser.events
+				WHERE project_id = ? AND event_type = 'Page Engagement' AND session_id != ''
+				  AND event_time >= toDate('`+since+`')`+flt+`
+				GROUP BY session_id
+			)
+		`, projectID).Scan(&avgEngagement)
+	})
+	// Daily pageviews + sessions + visitors trend (raw; zero-filled after).
+	run(func() {
+		rows, err := h.ch.Query(ctx, `
+			SELECT toDate(event_time) AS d, count() AS pv, uniqIf(session_id, session_id != '') AS s, uniq(`+identityExpr+`) AS v
+			FROM inspectuser.events WHERE `+base+`
+			GROUP BY d ORDER BY d ASC
+		`, projectID)
+		if err != nil {
+			return
+		}
 		defer rows.Close()
 		for rows.Next() {
 			var d time.Time
@@ -149,6 +164,27 @@ func (h *ProductHandler) WebAnalytics(c fiber.Ctx) error {
 				byDate[ds] = map[string]any{"date": ds, "pageviews": p, "sessions": s, "visitors": v}
 			}
 		}
+	})
+	// Breakdowns / top lists — each its own query.
+	run(func() { topPages = h.topPages(ctx, projectID, since, flt) })
+	run(func() { landing = h.sessionEdgePages(ctx, projectID, since, flt, "argMin") })
+	run(func() { exit = h.sessionEdgePages(ctx, projectID, since, flt, "argMax") })
+	run(func() { referrers = h.topReferrers(ctx, projectID, since, flt) })
+	run(func() { countries = h.webBreakdown(ctx, projectID, since, flt, "country") })
+	run(func() { browsers = h.webBreakdown(ctx, projectID, since, flt, "browser") })
+	run(func() { osBreakdown = h.webBreakdown(ctx, projectID, since, flt, "os_name") })
+	run(func() { devices = h.webBreakdown(ctx, projectID, since, flt, "device_type") })
+
+	wg.Wait()
+
+	// Derived values (pure Go) — computed once all reads are in.
+	returningVisitors := uint64(0)
+	if visitors > newVisitors {
+		returningVisitors = visitors - newVisitors
+	}
+	bounceRate := 0.0
+	if totalSessions > 0 {
+		bounceRate = float64(bounced) / float64(totalSessions)
 	}
 	trend := []map[string]any{}
 	for i := 0; i < days; i++ {
@@ -159,7 +195,6 @@ func (h *ProductHandler) WebAnalytics(c fiber.Ctx) error {
 			trend = append(trend, map[string]any{"date": ds, "pageviews": uint64(0), "sessions": uint64(0), "visitors": uint64(0)})
 		}
 	}
-
 	delta := func(cur, prev uint64) any {
 		if prev == 0 {
 			return nil
@@ -182,14 +217,14 @@ func (h *ProductHandler) WebAnalytics(c fiber.Ctx) error {
 		"delta_sessions":     delta(sessions, sPrev),
 		"delta_visitors":     delta(visitors, vPrev),
 		"trend":              trend,
-		"top_pages":          h.topPages(ctx, projectID, since, flt),
-		"landing_pages":      h.sessionEdgePages(ctx, projectID, since, flt, "argMin"),
-		"exit_pages":         h.sessionEdgePages(ctx, projectID, since, flt, "argMax"),
-		"referrers":          h.topReferrers(ctx, projectID, since, flt),
-		"countries":          h.webBreakdown(ctx, projectID, since, flt, "country"),
-		"browsers":           h.webBreakdown(ctx, projectID, since, flt, "browser"),
-		"os":                 h.webBreakdown(ctx, projectID, since, flt, "os_name"),
-		"devices":            h.webBreakdown(ctx, projectID, since, flt, "device_type"),
+		"top_pages":          topPages,
+		"landing_pages":      landing,
+		"exit_pages":         exit,
+		"referrers":          referrers,
+		"countries":          countries,
+		"browsers":           browsers,
+		"os":                 osBreakdown,
+		"devices":            devices,
 	})
 }
 
