@@ -1,15 +1,19 @@
 {%- comment -%}
   InspectUser app embed — loads the full SDK in the real page (autocapture + replay).
-  Config comes from the block settings; endpoints default to production.
+  Config is auto-provisioned into shop metafields at install (namespace
+  "inspectuser"); block settings are only a manual fallback / override.
 {%- endcomment -%}
-{%- if block.settings.api_key != blank -%}
+{%- assign iu_key = shop.metafields.inspectuser.api_key.value | default: block.settings.api_key -%}
+{%- assign iu_ingest = shop.metafields.inspectuser.ingest_url.value | default: block.settings.ingest_url -%}
+{%- assign iu_replay = shop.metafields.inspectuser.replay_url.value | default: block.settings.replay_url -%}
+{%- if iu_key != blank -%}
   <script src="{{ 'inspectuser.js' | asset_url }}" defer></script>
   <script>
     window.addEventListener('load', function () {
       if (!window.InspectUser || !window.InspectUser.init) return;
       window.InspectUser.init({
-        apiKey: {{ block.settings.api_key | json }},
-        serverUrl: {{ block.settings.ingest_url | json }},
+        apiKey: {{ iu_key | json }},
+        serverUrl: {{ iu_ingest | json }},
         autoCapture: {
           pageViews: true,
           clicks: true,
@@ -22,7 +26,7 @@
         },
         sessionReplay: {
           enabled: {% if block.settings.session_replay %}true{% else %}false{% endif %},
-          serverUrl: {{ block.settings.replay_url | json }},
+          serverUrl: {{ iu_replay | json }},
           sampleRate: {{ block.settings.sample_rate | default: 1.0 }},
           maskAllInputs: true
         }
@@ -38,9 +42,9 @@
   "settings": [
     {
       "type": "paragraph",
-      "content": "Paste your InspectUser project API key (InspectUser → Settings → API keys). Enables autocapture + session replay on your storefront."
+      "content": "Your API key is configured automatically when you install InspectUser — just turn this embed on. The field below is only needed to override it manually."
     },
-    { "type": "text", "id": "api_key", "label": "InspectUser API key" },
+    { "type": "text", "id": "api_key", "label": "InspectUser API key (optional override)" },
     { "type": "checkbox", "id": "session_replay", "label": "Enable session replay", "default": true },
     { "type": "range", "id": "sample_rate", "label": "Session sample rate", "min": 0.1, "max": 1.0, "step": 0.1, "default": 1.0 },
     { "type": "text", "id": "ingest_url", "label": "Ingest URL", "default": "https://ingest.inspectuser.com" },

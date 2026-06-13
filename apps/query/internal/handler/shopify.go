@@ -127,6 +127,12 @@ func (h *ShopifyHandler) Callback(c fiber.Ctx) error {
 		h.log.Warn("shopify pixel activation failed", zap.String("shop", shop), zap.Error(err))
 	}
 
+	// Best-effort: write theme-embed config (key + URLs) to shop metafields so the
+	// full SDK (autocapture + replay + heatmaps) needs no manual key entry.
+	if err := h.setThemeConfig(ctx, shop, token, apiKey); err != nil {
+		h.log.Warn("shopify theme config failed", zap.String("shop", shop), zap.Error(err))
+	}
+
 	return c.Redirect().To(h.appURL + "/overview?shopify=connected")
 }
 
@@ -266,6 +272,44 @@ func (h *ShopifyHandler) activatePixel(ctx context.Context, shop, token, project
 			"variables": map[string]any{"s": string(settings)},
 		})
 	}
+	_, err = h.adminGraphQL(ctx, shop, token, payload)
+	return err
+}
+
+// ---- Theme app embed auto-config -------------------------------------------
+
+// setThemeConfig writes the project's ingest key + ingest/replay URLs to shop
+// metafields (namespace "inspectuser") so the theme app embed picks them up with
+// zero manual entry — the merchant just toggles the embed on. The Liquid reads
+// shop.metafields.inspectuser.* and only falls back to manual block settings.
+func (h *ShopifyHandler) setThemeConfig(ctx context.Context, shop, token, projectAPIKey string) error {
+	// Need the Shop GID to own the metafields.
+	q, _ := json.Marshal(map[string]any{"query": `{ shop { id } }`})
+	body, err := h.adminGraphQL(ctx, shop, token, q)
+	if err != nil {
+		return err
+	}
+	var sr struct {
+		Data struct {
+			Shop struct {
+				ID string `json:"id"`
+			} `json:"shop"`
+		} `json:"data"`
+	}
+	_ = json.Unmarshal(body, &sr)
+	if sr.Data.Shop.ID == "" {
+		return fmt.Errorf("could not resolve shop id")
+	}
+
+	mfs := []map[string]string{
+		{"ownerId": sr.Data.Shop.ID, "namespace": "inspectuser", "key": "api_key", "type": "single_line_text_field", "value": projectAPIKey},
+		{"ownerId": sr.Data.Shop.ID, "namespace": "inspectuser", "key": "ingest_url", "type": "single_line_text_field", "value": h.ingestURL},
+		{"ownerId": sr.Data.Shop.ID, "namespace": "inspectuser", "key": "replay_url", "type": "single_line_text_field", "value": h.apiURL},
+	}
+	payload, _ := json.Marshal(map[string]any{
+		"query":     `mutation($mf:[MetafieldsSetInput!]!){ metafieldsSet(metafields:$mf){ userErrors{ field message } } }`,
+		"variables": map[string]any{"mf": mfs},
+	})
 	_, err = h.adminGraphQL(ctx, shop, token, payload)
 	return err
 }
