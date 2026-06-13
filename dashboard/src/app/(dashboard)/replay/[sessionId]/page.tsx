@@ -57,14 +57,26 @@ export default function ReplayPlayerPage({ params }: { params: Promise<{ session
     const target = ref.current
     let cancelled = false
 
+    // True recorded viewport comes from the Meta event (type 4) — rrweb sets the
+    // dimensions on the iframe, NOT on .replayer-wrapper's inline style, so
+    // reading wrapper.style.width was unreliable and defaulted to 1280. A wider
+    // recording then rendered at native size (scale clamped to 1), left-aligned
+    // and overflowing off the right. Reading the meta gives the correct width.
+    const meta = (events as Array<{ type?: number; data?: { width?: number; height?: number } }>)
+      .find(e => e?.type === 4)?.data
+    const recW = meta?.width || 1280
+    const recH = meta?.height || 800
+
     // Scale the recorded viewport to fit the container width — no scroll.
     const fit = () => {
       const wrapper = target.querySelector('.replayer-wrapper') as HTMLElement | null
       if (!wrapper) return
-      const recW = parseFloat(wrapper.style.width) || 1280
-      const recH = parseFloat(wrapper.style.height) || 800
       const availW = target.clientWidth || recW
       const scale = Math.min(availW / recW, 1)
+      // Pin the wrapper to the recorded size so the scale transform shrinks the
+      // whole frame predictably regardless of how rrweb sized the iframe.
+      wrapper.style.width = `${recW}px`
+      wrapper.style.height = `${recH}px`
       wrapper.style.transform = `scale(${scale})`
       wrapper.style.transformOrigin = 'top left'
       target.style.height = `${Math.round(recH * scale)}px`
