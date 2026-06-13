@@ -127,12 +127,6 @@ func (h *ShopifyHandler) Callback(c fiber.Ctx) error {
 		h.log.Warn("shopify pixel activation failed", zap.String("shop", shop), zap.Error(err))
 	}
 
-	// Best-effort: write theme-embed config (key + URLs) to shop metafields so the
-	// full SDK (autocapture + replay + heatmaps) needs no manual key entry.
-	if err := h.setThemeConfig(ctx, shop, token, apiKey); err != nil {
-		h.log.Warn("shopify theme config failed", zap.String("shop", shop), zap.Error(err))
-	}
-
 	return c.Redirect().To(h.appURL + "/overview?shopify=connected")
 }
 
@@ -278,40 +272,32 @@ func (h *ShopifyHandler) activatePixel(ctx context.Context, shop, token, project
 
 // ---- Theme app embed auto-config -------------------------------------------
 
-// setThemeConfig writes the project's ingest key + ingest/replay URLs to shop
-// metafields (namespace "inspectuser") so the theme app embed picks them up with
-// zero manual entry — the merchant just toggles the embed on. The Liquid reads
-// shop.metafields.inspectuser.* and only falls back to manual block settings.
-func (h *ShopifyHandler) setThemeConfig(ctx context.Context, shop, token, projectAPIKey string) error {
-	// Need the Shop GID to own the metafields.
-	q, _ := json.Marshal(map[string]any{"query": `{ shop { id } }`})
-	body, err := h.adminGraphQL(ctx, shop, token, q)
-	if err != nil {
-		return err
+// Config (GET /shopify/config?shop=acme.myshopify.com) returns the store's
+// ingest key + ingest/replay URLs so the theme app embed needs zero manual key
+// entry — inspectuser.js fetches this on load and inits itself. Public + CORS-
+// open: the api_key is a publishable (write-only) ingest key, already visible in
+// the storefront once the embed runs, so serving it by shop domain is the same
+// exposure as any client-side analytics token. App-owned shop metafields can't
+// be used for this since Shopify made them private to the app in May 2025.
+func (h *ShopifyHandler) Config(c fiber.Ctx) error {
+	c.Set("Access-Control-Allow-Origin", "*")
+	shop := strings.ToLower(c.Query("shop"))
+	if !validShop(shop) {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid shop"})
 	}
-	var sr struct {
-		Data struct {
-			Shop struct {
-				ID string `json:"id"`
-			} `json:"shop"`
-		} `json:"data"`
+	var apiKey string
+	err := h.db.QueryRow(c.Context(),
+		`SELECT p.api_key FROM shopify_installs s JOIN projects p ON p.id = s.project_id
+		 WHERE s.shop=$1 AND s.uninstalled_at IS NULL`, shop,
+	).Scan(&apiKey)
+	if err != nil || apiKey == "" {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "not installed"})
 	}
-	_ = json.Unmarshal(body, &sr)
-	if sr.Data.Shop.ID == "" {
-		return fmt.Errorf("could not resolve shop id")
-	}
-
-	mfs := []map[string]string{
-		{"ownerId": sr.Data.Shop.ID, "namespace": "inspectuser", "key": "api_key", "type": "single_line_text_field", "value": projectAPIKey},
-		{"ownerId": sr.Data.Shop.ID, "namespace": "inspectuser", "key": "ingest_url", "type": "single_line_text_field", "value": h.ingestURL},
-		{"ownerId": sr.Data.Shop.ID, "namespace": "inspectuser", "key": "replay_url", "type": "single_line_text_field", "value": h.apiURL},
-	}
-	payload, _ := json.Marshal(map[string]any{
-		"query":     `mutation($mf:[MetafieldsSetInput!]!){ metafieldsSet(metafields:$mf){ userErrors{ field message } } }`,
-		"variables": map[string]any{"mf": mfs},
+	return c.JSON(fiber.Map{
+		"api_key":    apiKey,
+		"ingest_url": h.ingestURL,
+		"replay_url": h.apiURL,
 	})
-	_, err = h.adminGraphQL(ctx, shop, token, payload)
-	return err
 }
 
 func (h *ShopifyHandler) adminGraphQL(ctx context.Context, shop, token string, payload []byte) ([]byte, error) {

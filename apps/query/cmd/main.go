@@ -500,6 +500,7 @@ func main() {
 	if shopifyHandler.Configured() {
 		app.Get("/shopify/install", shopifyHandler.Install)
 		app.Get("/shopify/callback", shopifyHandler.Callback)
+		app.Get("/shopify/config", shopifyHandler.Config)
 		app.Post("/shopify/webhooks/app/uninstalled", shopifyHandler.WebhookUninstalled)
 		app.Post("/shopify/webhooks/customers/data_request", shopifyHandler.WebhookGDPR)
 		app.Post("/shopify/webhooks/customers/redact", shopifyHandler.WebhookGDPR)

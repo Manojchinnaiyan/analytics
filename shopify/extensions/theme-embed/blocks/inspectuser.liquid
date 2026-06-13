@@ -1,39 +1,49 @@
 {%- comment -%}
   InspectUser app embed — loads the full SDK in the real page (autocapture + replay).
-  Config is auto-provisioned into shop metafields at install (namespace
-  "inspectuser"); block settings are only a manual fallback / override.
+  Config (API key + ingest/replay URLs) is fetched automatically from the InspectUser
+  API keyed by the shop domain, so the merchant just turns the embed on. The manual
+  block settings below are only a fallback / override.
 {%- endcomment -%}
-{%- assign iu_key = shop.metafields.inspectuser.api_key.value | default: block.settings.api_key -%}
-{%- assign iu_ingest = shop.metafields.inspectuser.ingest_url.value | default: block.settings.ingest_url -%}
-{%- assign iu_replay = shop.metafields.inspectuser.replay_url.value | default: block.settings.replay_url -%}
-{%- if iu_key != blank -%}
-  <script src="{{ 'inspectuser.js' | asset_url }}" defer></script>
-  <script>
-    window.addEventListener('load', function () {
-      if (!window.InspectUser || !window.InspectUser.init) return;
+{%- assign iu_config = block.settings.config_url | default: 'https://api.inspectuser.com' -%}
+<script src="{{ 'inspectuser.js' | asset_url }}" defer></script>
+<script>
+  window.addEventListener('load', function () {
+    if (!window.InspectUser || !window.InspectUser.init) return;
+
+    var manualKey = {{ block.settings.api_key | json }};
+    var manualIngest = {{ block.settings.ingest_url | default: 'https://ingest.inspectuser.com' | json }};
+    var manualReplay = {{ block.settings.replay_url | default: 'https://api.inspectuser.com' | json }};
+    var sessionReplay = {% if block.settings.session_replay %}true{% else %}false{% endif %};
+    var sampleRate = {{ block.settings.sample_rate | default: 1.0 }};
+
+    function start(key, ingest, replay) {
+      if (!key) return; // not installed / no override — stay silent
       window.InspectUser.init({
-        apiKey: {{ iu_key | json }},
-        serverUrl: {{ iu_ingest | json }},
+        apiKey: key,
+        serverUrl: ingest,
         autoCapture: {
-          pageViews: true,
-          clicks: true,
-          formSubmissions: true,
-          scrollDepth: true,
-          rageClicks: true,
-          deadClicks: true,
-          webVitals: true,
-          errors: true
+          pageViews: true, clicks: true, formSubmissions: true,
+          scrollDepth: true, rageClicks: true, deadClicks: true,
+          webVitals: true, errors: true
         },
         sessionReplay: {
-          enabled: {% if block.settings.session_replay %}true{% else %}false{% endif %},
-          serverUrl: {{ iu_replay | json }},
-          sampleRate: {{ block.settings.sample_rate | default: 1.0 }},
+          enabled: sessionReplay,
+          serverUrl: replay,
+          sampleRate: sampleRate,
           maskAllInputs: true
         }
       });
-    });
-  </script>
-{%- endif -%}
+    }
+
+    if (manualKey) { start(manualKey, manualIngest, manualReplay); return; }
+
+    // Auto-config: fetch the project's key + URLs by shop domain.
+    fetch({{ iu_config | json }} + '/shopify/config?shop={{ shop.permanent_domain }}')
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (cfg) { if (cfg && cfg.api_key) start(cfg.api_key, cfg.ingest_url, cfg.replay_url); })
+      .catch(function () {});
+  });
+</script>
 
 {% schema %}
 {
@@ -42,13 +52,14 @@
   "settings": [
     {
       "type": "paragraph",
-      "content": "Your API key is configured automatically when you install InspectUser — just turn this embed on. The field below is only needed to override it manually."
+      "content": "Your API key is configured automatically when you install InspectUser — just turn this embed on. The fields below are only needed to override it manually."
     },
     { "type": "text", "id": "api_key", "label": "InspectUser API key (optional override)" },
     { "type": "checkbox", "id": "session_replay", "label": "Enable session replay", "default": true },
     { "type": "range", "id": "sample_rate", "label": "Session sample rate", "min": 0.1, "max": 1.0, "step": 0.1, "default": 1.0 },
     { "type": "text", "id": "ingest_url", "label": "Ingest URL", "default": "https://ingest.inspectuser.com" },
-    { "type": "text", "id": "replay_url", "label": "Replay URL", "default": "https://api.inspectuser.com" }
+    { "type": "text", "id": "replay_url", "label": "Replay URL", "default": "https://api.inspectuser.com" },
+    { "type": "text", "id": "config_url", "label": "Config API URL", "default": "https://api.inspectuser.com" }
   ]
 }
 {% endschema %}
