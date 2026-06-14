@@ -27,8 +27,9 @@ type attrBucket struct {
 }
 
 type attrAgg struct {
-	users int64
-	conv  float64
+	users     int64   // total users attributed to this bucket
+	conv      float64 // conversion EVENTS credited (fractional for multi-touch)
+	convUsers int64   // distinct users who converted (for a sane 0–100% rate)
 }
 
 // GET /v1/projects/:id/attribution?conversion=<event>&model=<model>
@@ -68,7 +69,7 @@ func (h *AttributionHandler) Attribution(c fiber.Ctx) error {
 			%[1]s(utm_medium, event_time, utm_medium != '')     AS t_medium,
 			%[1]s(utm_campaign, event_time, utm_campaign != '') AS t_campaign,
 			%[1]s(referrer, event_time, %[2]s)                  AS t_referrer,
-			maxIf(toInt8(1), event_type = ?) AS converted
+			toInt64(countIf(event_type = ?)) AS conv_events
 		FROM inspectuser.events
 		WHERE project_id = ?
 		GROUP BY if(user_id != '', user_id, device_id)
@@ -85,30 +86,33 @@ func (h *AttributionHandler) Attribution(c fiber.Ctx) error {
 	referrer := map[string]*attrAgg{}
 	var totalUsers, totalConv int64
 
-	add := func(m map[string]*attrAgg, key string, converted int8) {
+	add := func(m map[string]*attrAgg, key string, convEvents int64) {
 		a := m[key]
 		if a == nil {
 			a = &attrAgg{}
 			m[key] = a
 		}
 		a.users++
-		a.conv += float64(converted)
+		a.conv += float64(convEvents) // credit the conversion EVENT count
+		if convEvents > 0 {
+			a.convUsers++
+		}
 	}
 
 	for rows.Next() {
 		var src, med, camp, ref string
-		var converted int8
-		if err := rows.Scan(&src, &med, &camp, &ref, &converted); err != nil {
+		var convEvents int64
+		if err := rows.Scan(&src, &med, &camp, &ref, &convEvents); err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 		}
 		totalUsers++
-		totalConv += int64(converted)
+		totalConv += convEvents
 
-		add(channel, classifyChannel(src, med, ref), converted)
-		add(source, orDefault(src, "(direct)"), converted)
-		add(medium, orDefault(med, "(none)"), converted)
-		add(campaign, orDefault(camp, "(none)"), converted)
-		add(referrer, orDefault(referrerHost(ref), "(direct)"), converted)
+		add(channel, classifyChannel(src, med, ref), convEvents)
+		add(source, orDefault(src, "(direct)"), convEvents)
+		add(medium, orDefault(med, "(none)"), convEvents)
+		add(campaign, orDefault(camp, "(none)"), convEvents)
+		add(referrer, orDefault(referrerHost(ref), "(direct)"), convEvents)
 	}
 
 	return c.JSON(fiber.Map{
@@ -153,7 +157,7 @@ func (h *AttributionHandler) multiTouch(c fiber.Ctx, projectID, conversion, mode
 	medium := map[string]*attrAgg{}
 	campaign := map[string]*attrAgg{}
 	referrer := map[string]*attrAgg{}
-	var totalConv int64
+	var totalConv, converters int64
 
 	// credit adds fractional conversion credit, and one user count per (bucket,user).
 	credit := func(m map[string]*attrAgg, key string, w float64, seen map[string]bool) {
@@ -166,17 +170,21 @@ func (h *AttributionHandler) multiTouch(c fiber.Ctx, projectID, conversion, mode
 		if !seen[key] {
 			seen[key] = true
 			a.users++
+			a.convUsers++ // every user credited here is a converter
 		}
 	}
 
 	var curID string
 	var touches []touch
 	var convTime int64
+	var convCount int64 // number of conversion EVENTS for this user
 	flush := func() {
-		if curID == "" || convTime == 0 { // only converters get credit
+		if curID == "" || convCount == 0 { // only converters get credit
 			return
 		}
-		totalConv++
+		converters++
+		totalConv += convCount
+		n := float64(convCount)
 		kept := touches[:0]
 		for _, tc := range touches {
 			if tc.t <= convTime {
@@ -185,16 +193,16 @@ func (h *AttributionHandler) multiTouch(c fiber.Ctx, projectID, conversion, mode
 		}
 		cs, ms, ds, cps, rs := map[string]bool{}, map[string]bool{}, map[string]bool{}, map[string]bool{}, map[string]bool{}
 		if len(kept) == 0 { // converted with no attributable touch → Direct
-			credit(channel, "Direct", 1, cs)
-			credit(source, "(direct)", 1, ms)
-			credit(medium, "(none)", 1, ds)
-			credit(campaign, "(none)", 1, cps)
-			credit(referrer, "(direct)", 1, rs)
+			credit(channel, "Direct", n, cs)
+			credit(source, "(direct)", n, ms)
+			credit(medium, "(none)", n, ds)
+			credit(campaign, "(none)", n, cps)
+			credit(referrer, "(direct)", n, rs)
 			return
 		}
 		weights := touchWeights(kept, convTime, model)
 		for i, tc := range kept {
-			w := weights[i]
+			w := weights[i] * n // distribute ALL of this user's conversions across the path
 			credit(channel, classifyChannel(tc.source, tc.medium, tc.ref), w, cs)
 			credit(source, orDefault(tc.source, "(direct)"), w, ms)
 			credit(medium, orDefault(tc.medium, "(none)"), w, ds)
@@ -213,10 +221,13 @@ func (h *AttributionHandler) multiTouch(c fiber.Ctx, projectID, conversion, mode
 		}
 		if id != curID {
 			flush()
-			curID, touches, convTime = id, nil, 0
+			curID, touches, convTime, convCount = id, nil, 0, 0
 		}
-		if isConv == 1 && (convTime == 0 || t < convTime) {
-			convTime = t
+		if isConv == 1 {
+			convCount++
+			if convTime == 0 || t < convTime {
+				convTime = t
+			}
 		}
 		if s != "" || md != "" || rf != "" {
 			touches = append(touches, touch{t, s, md, cp, rf})
@@ -225,7 +236,7 @@ func (h *AttributionHandler) multiTouch(c fiber.Ctx, projectID, conversion, mode
 	flush()
 
 	return c.JSON(fiber.Map{
-		"total_users":       totalConv,
+		"total_users":       converters,
 		"total_conversions": totalConv,
 		"conversion_event":  conversion,
 		"model":             model,
@@ -286,7 +297,9 @@ func toSorted(m map[string]*attrAgg) []attrBucket {
 	for k, v := range m {
 		rate := 0.0
 		if v.users > 0 {
-			rate = float64(v.conv) / float64(v.users)
+			// fraction of users who converted — stays 0–100% even if the
+			// conversion event fires many times per user.
+			rate = float64(v.convUsers) / float64(v.users)
 		}
 		out = append(out, attrBucket{Value: k, Users: v.users, Conversions: v.conv, ConvRate: rate})
 	}
