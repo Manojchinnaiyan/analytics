@@ -1,10 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { ArrowRight } from 'lucide-react'
-import { track, identify } from '@/lib/inspectuser.mjs'
-import { authApi, saveToken } from '@/lib/auth'
-import { useProjectStore } from '@/stores/project'
+import { ArrowRight, MailCheck } from 'lucide-react'
+import { track } from '@/lib/inspectuser.mjs'
+import { authApi } from '@/lib/auth'
 import { AuthShell } from '@/components/marketing/AuthShell'
 import { RedirectIfAuthed } from '@/components/RedirectIfAuthed'
 
@@ -22,10 +21,11 @@ const inputCls =
   'w-full border border-[var(--color-border)] rounded-xl px-3.5 py-2.5 text-[15px] text-[var(--color-text)] placeholder:text-[var(--color-text-subtle)] focus:outline-none focus:border-[var(--color-brand)] focus:ring-4 focus:ring-[var(--color-brand-soft)] transition-all'
 
 export default function SignupPage() {
-  const setProject = useProjectStore(s => s.setProject)
   const [form, setForm] = useState<FormState>({ name: '', email: '', password: '', org_name: '', org_slug: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [sent, setSent] = useState(false)
+  const [resent, setResent] = useState(false)
 
   function set(field: keyof FormState) {
     return (e: React.ChangeEvent<HTMLInputElement>) => setForm(f => ({ ...f, [field]: e.target.value }))
@@ -36,22 +36,41 @@ export default function SignupPage() {
     setError('')
     setLoading(true)
     try {
-      const res = await authApi.signup(form)
-      saveToken(res.token)
-      setProject({
-        projectId: res.project_id ?? '', apiKey: res.api_key ?? '', orgId: res.org_id,
-        userName: res.name ?? form.name, email: res.email ?? form.email,
-        projectName: res.project_name ?? (form.org_name + ' (Default)'),
-      })
-      identify(res.user_id, { email: res.email ?? form.email, name: form.name, org: form.org_name })
+      await authApi.signup(form)
       track('Signed Up', { org: form.org_name })
-      // Hard navigation so the app boots fresh with the token already saved.
-      window.location.href = '/welcome'
+      // No session yet — the user must verify their email first.
+      setSent(true)
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
       setError(msg ?? 'Failed to create account')
-      setLoading(false)
     }
+    setLoading(false)
+  }
+
+  async function resend() {
+    try { await authApi.resendVerification(form.email) } catch { /* generic */ }
+    setResent(true)
+  }
+
+  if (sent) {
+    return (
+      <AuthShell>
+        <div className="mx-auto mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-[var(--color-brand-soft)]">
+          <MailCheck className="h-7 w-7 text-[var(--color-brand)]" />
+        </div>
+        <h1 className="text-[24px] font-semibold tracking-tight text-[var(--color-text)]">Verify your email</h1>
+        <p className="mt-2 text-[15px] text-[var(--color-text-muted)] leading-relaxed">
+          We sent a verification link to <strong className="text-[var(--color-text)]">{form.email}</strong>. Click it to activate your account and open your dashboard.
+        </p>
+        <div className="mt-7 space-y-3">
+          <p className="text-[14px] text-[var(--color-text-subtle)]">Didn&apos;t get it? Check spam, or resend below.</p>
+          <button onClick={resend} disabled={resent} className="w-full py-2.5 border border-[var(--color-border)] rounded-xl text-[15px] font-medium text-[var(--color-text)] hover:bg-[var(--color-surface-muted)] disabled:opacity-50 transition-colors">
+            {resent ? 'Verification email re-sent ✓' : 'Resend verification email'}
+          </button>
+          <a href="/login" className="block text-center text-[14px] text-[var(--color-text-muted)] hover:text-[var(--color-brand)]">← Back to sign in</a>
+        </div>
+      </AuthShell>
+    )
   }
 
   return (

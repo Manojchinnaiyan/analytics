@@ -20,14 +20,22 @@ export const authApi = {
   login: (email: string, password: string): Promise<AuthResponse> =>
     api.post('/v1/auth/login', { email, password }).then(r => r.data),
 
+  // Signup no longer returns a session — it requires email verification first.
   signup: (body: {
     email: string
     password: string
     name: string
     org_name: string
     org_slug: string
-  }): Promise<AuthResponse> =>
+  }): Promise<{ verification_required: boolean; email: string }> =>
     api.post('/v1/auth/signup', body).then(r => r.data),
+
+  // Verify the email token → returns a full session (same shape as login).
+  verifyEmail: (token: string): Promise<AuthResponse> =>
+    api.post('/v1/auth/verify-email', { token }).then(r => r.data),
+
+  resendVerification: (email: string): Promise<{ message: string }> =>
+    api.post('/v1/auth/verify-email/resend', { email }).then(r => r.data),
 
   forgotPassword: (email: string): Promise<{ message: string }> =>
     api.post('/v1/auth/forgot', { email }).then(r => r.data),

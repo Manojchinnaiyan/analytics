@@ -19,6 +19,13 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [ssoMode, setSsoMode] = useState(false)
   const [orgSlug, setOrgSlug] = useState('')
+  const [needsVerify, setNeedsVerify] = useState(false)
+  const [resent, setResent] = useState(false)
+
+  async function resendVerify() {
+    try { await authApi.resendVerification(email) } catch { /* generic */ }
+    setResent(true)
+  }
 
   function startSSO(e: React.FormEvent) {
     e.preventDefault()
@@ -30,6 +37,7 @@ export default function LoginPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
+    setNeedsVerify(false)
     setLoading(true)
     try {
       const res = await authApi.login(email, password)
@@ -44,8 +52,13 @@ export default function LoginPage() {
       // localStorage. Avoids the SPA race where the first click didn't navigate
       // (router.push interrupted by the re-render / auth guard).
       window.location.href = '/overview'
-    } catch {
-      setError('Invalid email or password')
+    } catch (err: unknown) {
+      const code = (err as { response?: { data?: { error?: string } } })?.response?.data?.error
+      if (code === 'email_not_verified') {
+        setNeedsVerify(true)
+      } else {
+        setError('Invalid email or password')
+      }
       setLoading(false)
     }
   }
@@ -79,6 +92,14 @@ export default function LoginPage() {
             <input id="password" type="password" required value={password} onChange={e => setPassword(e.target.value)} className={inputCls} placeholder="••••••••" />
           </div>
           {error && <p className="text-[14px] text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
+          {needsVerify && (
+            <div className="text-[14px] text-[var(--color-text)] bg-[var(--color-brand-soft)] px-3.5 py-3 rounded-lg space-y-2">
+              <p>Please verify your email before signing in — check your inbox for the link.</p>
+              <button type="button" onClick={resendVerify} disabled={resent} className="font-medium text-[var(--color-brand)] hover:text-[var(--color-brand-hover)] disabled:opacity-60">
+                {resent ? 'Verification email re-sent ✓' : 'Resend verification email'}
+              </button>
+            </div>
+          )}
           <button type="submit" disabled={loading} className="group w-full py-2.5 bg-[var(--color-brand)] text-white rounded-xl text-[15px] font-medium hover:bg-[var(--color-brand-hover)] disabled:opacity-50 transition-colors inline-flex items-center justify-center gap-2">
             {loading ? 'Signing in…' : <>Sign in <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" /></>}
           </button>

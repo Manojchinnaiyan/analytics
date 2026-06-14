@@ -206,6 +206,48 @@ func SignupNotifyEmail(name, email, orgName string) (subject, html string) {
 	return subject, html
 }
 
+// VerificationEmail renders the "confirm your email" email. Focused on one
+// action (verify) for high deliverability, on-brand with the welcome email.
+func VerificationEmail(verifyURL string) (subject, html string) {
+	subject = "Verify your email to start using InspectUser"
+	tpl := `<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="x-apple-disable-message-reformatting"><title>Verify your email</title>
+</head>
+<body style="margin:0;padding:0;background:#EEF1F5;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#EEF1F5;padding:32px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+<tr><td align="center">
+  <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 1px 4px rgba(16,24,40,.08);">
+    <tr><td bgcolor="#0052F2" style="background:#0052F2;background:linear-gradient(135deg,#0052F2 0%,#5B8DEF 100%);padding:36px 40px;">
+      <div style="font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#C7DAFF;margin-bottom:12px;">● INSPECTUSER</div>
+      <h1 style="margin:0;font-size:26px;line-height:1.25;color:#ffffff;font-weight:700;">Confirm your email ✉️</h1>
+    </td></tr>
+    <tr><td style="padding:32px 40px;">
+      <p style="margin:0 0 24px;font-size:16px;line-height:1.6;color:#344054;">
+        You're one click away. Verify your email to activate your account and open your dashboard.
+      </p>
+      <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:0 auto 24px;"><tr>
+        <td align="center" bgcolor="#0052F2" style="border-radius:10px;">
+          <a href="{{URL}}" style="display:inline-block;padding:14px 44px;font-size:16px;font-weight:600;color:#ffffff;text-decoration:none;">Verify my email →</a>
+        </td>
+      </tr></table>
+      <p style="margin:0;font-size:13px;line-height:1.6;color:#98A2B3;">
+        This link expires in 24 hours. If you didn't create an InspectUser account, you can ignore this email.<br><br>
+        Or paste this link into your browser:<br><span style="color:#0052F2;word-break:break-all;">{{URL}}</span>
+      </p>
+    </td></tr>
+    <tr><td style="padding:18px 40px;background:#F7F9FC;border-top:1px solid #EAEEF3;">
+      <p style="margin:0;font-size:12px;color:#98A2B3;">InspectUser — product analytics, session replay &amp; revenue attribution.</p>
+    </td></tr>
+  </table>
+</td></tr>
+</table>
+</body></html>`
+	html = strings.ReplaceAll(tpl, "{{URL}}", verifyURL)
+	return subject, html
+}
+
 // PasswordResetEmail renders the password-reset email body.
 func PasswordResetEmail(resetURL string) (subject, html string) {
 	subject = "Reset your InspectUser password"

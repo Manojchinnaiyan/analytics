@@ -32,20 +32,40 @@ func NewAuthHandler(db *pgxpool.Pool, rdb *redis.Client, jwtSecret string, mail 
 	return &AuthHandler{db: db, rdb: rdb, jwtSecret: jwtSecret, mail: mail, appURL: appURL, adminEmail: adminEmail, log: log}
 }
 
-// sendSignupEmails fires the welcome email (to the new user) and a signup
-// notification (to the admin) in the background — best-effort, never blocks or
-// fails the signup response. Uses a fresh context since the request's is done.
-func (h *AuthHandler) sendSignupEmails(name, email, orgName string) {
+const emailVerifyTTL = 24 * time.Hour
+
+// issueVerifyToken stores a one-time email-verification token (24h) and emails
+// the verification link. Best-effort send; the token is what matters.
+func (h *AuthHandler) issueVerifyToken(ctx context.Context, userID, email string) {
+	token := genKey(32)
+	if err := h.rdb.Set(ctx, "emailverify:"+token, userID, emailVerifyTTL).Err(); err != nil {
+		h.log.Error("failed to store verify token", zap.Error(err))
+		return
+	}
+	verifyURL := strings.TrimRight(h.appURL, "/") + "/verify-email?token=" + token
+	if h.mail != nil && h.mail.Enabled() {
+		subject, html := mailer.VerificationEmail(verifyURL)
+		if err := h.mail.Send(email, subject, html); err != nil {
+			h.log.Warn("verification email failed", zap.String("to", email), zap.Error(err))
+		}
+	} else {
+		// SMTP off (dev) — log the link so it's usable; never returned in the API.
+		h.log.Info("email verification link (SMTP disabled)", zap.String("email", email), zap.String("verify_url", verifyURL))
+	}
+}
+
+// sendWelcomeAndNotify fires the welcome email (to the now-verified user) and a
+// signup notification (to the admin) in the background. Called AFTER verification
+// so the admin only hears about real, confirmed signups.
+func (h *AuthHandler) sendWelcomeAndNotify(name, email, orgName string) {
 	if h.mail == nil || !h.mail.Enabled() {
 		return
 	}
 	go func() {
-		// Welcome → new user.
 		subject, html := mailer.WelcomeEmail(name, h.appURL)
 		if err := h.mail.Send(email, subject, html); err != nil {
 			h.log.Warn("welcome email failed", zap.String("to", email), zap.Error(err))
 		}
-		// Notification → admin.
 		if h.adminEmail != "" {
 			s2, h2 := mailer.SignupNotifyEmail(name, email, orgName)
 			if err := h.mail.Send(h.adminEmail, s2, h2); err != nil {
@@ -97,10 +117,10 @@ func (h *AuthHandler) Signup(c fiber.Ctx) error {
 		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "org slug already taken"})
 	}
 
-	// Create user
+	// Create user — unverified; they must confirm their email before logging in.
 	var userID string
 	if err := tx.QueryRow(ctx,
-		`INSERT INTO users (org_id, email, name, password_hash, role) VALUES ($1, $2, $3, $4, 'owner') RETURNING id`,
+		`INSERT INTO users (org_id, email, name, password_hash, role, email_verified) VALUES ($1, $2, $3, $4, 'owner', false) RETURNING id`,
 		orgID, body.Email, body.Name, string(hash),
 	).Scan(&userID); err != nil {
 		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "email already registered"})
@@ -130,24 +150,101 @@ func (h *AuthHandler) Signup(c fiber.Ctx) error {
 	h.rdb.Set(ctx, "projorg:"+projectID, orgID, time.Hour)
 	h.rdb.Set(ctx, "usage:limit:"+projectID, 0, 0) // new project: unlimited
 
-	token, err := auth.GenerateToken(userID, orgID, "owner", h.jwtSecret)
+	// Email-verification gate: no session token is issued at signup. We email a
+	// verification link; the user gets logged in only after clicking it. This is
+	// what enforces "verify your email before entering the dashboard".
+	h.issueVerifyToken(ctx, userID, body.Email)
+
+	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
+		"verification_required": true,
+		"email":                 body.Email,
+	})
+}
+
+// POST /v1/auth/verify-email — body {token}. Marks the email verified, logs the
+// user in (issues a JWT), and sends the welcome email. Returns the same shape as
+// login so the dashboard can store the token and go straight to /overview.
+func (h *AuthHandler) VerifyEmail(c fiber.Ctx) error {
+	var body struct {
+		Token string `json:"token"`
+	}
+	if err := c.Bind().JSON(&body); err != nil || body.Token == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "token is required"})
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	key := "emailverify:" + body.Token
+	userID, err := h.rdb.Get(ctx, key).Result()
+	if err != nil || userID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "this verification link is invalid or has expired"})
+	}
+
+	// Mark verified + load the account in one round-trip.
+	var orgID, role, name, email string
+	if err := h.db.QueryRow(ctx,
+		`UPDATE users SET email_verified = true WHERE id = $1
+		 RETURNING org_id, role, COALESCE(name,''), email`, userID,
+	).Scan(&orgID, &role, &name, &email); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "account not found"})
+	}
+	h.rdb.Del(ctx, key) // one-time use
+
+	// Default project (mirror login) + re-seed Redis.
+	var projectID, apiKey, projectName, orgName string
+	var eventLimit int64
+	h.db.QueryRow(ctx, `SELECT id, api_key, name, event_limit FROM projects WHERE org_id = $1 ORDER BY created_at LIMIT 1`, orgID).
+		Scan(&projectID, &apiKey, &projectName, &eventLimit)
+	h.db.QueryRow(ctx, `SELECT name FROM organizations WHERE id = $1`, orgID).Scan(&orgName)
+	if apiKey != "" {
+		h.rdb.Set(ctx, "apikey:"+apiKey, projectID, 0)
+		h.rdb.Set(ctx, "projorg:"+projectID, orgID, time.Hour)
+		h.rdb.Set(ctx, "usage:limit:"+projectID, eventLimit, 0)
+	}
+
+	token, err := auth.GenerateToken(userID, orgID, role, h.jwtSecret)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to generate token"})
 	}
 
-	// Welcome the new user + notify the admin (background, best-effort).
-	h.sendSignupEmails(body.Name, body.Email, body.OrgName)
+	// Now that it's a real, verified account: welcome them + notify the admin.
+	h.sendWelcomeAndNotify(name, email, orgName)
 
-	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
+	return c.JSON(fiber.Map{
 		"token":        token,
 		"user_id":      userID,
 		"org_id":       orgID,
-		"name":         body.Name,
-		"email":        body.Email,
+		"name":         name,
+		"email":        email,
 		"project_id":   projectID,
 		"project_name": projectName,
 		"api_key":      apiKey,
 	})
+}
+
+// POST /v1/auth/verify-email/resend — body {email}. Re-sends the verification
+// link if the account exists and is still unverified. Always returns a generic
+// 200 (no account enumeration).
+func (h *AuthHandler) ResendVerification(c fiber.Ctx) error {
+	var body struct {
+		Email string `json:"email"`
+	}
+	if err := c.Bind().JSON(&body); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": errInvalidJSON})
+	}
+	email := strings.ToLower(strings.TrimSpace(body.Email))
+
+	if email != "" {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		var userID string
+		var verified bool
+		if err := h.db.QueryRow(ctx, `SELECT id, email_verified FROM users WHERE email = $1`, email).Scan(&userID, &verified); err == nil && userID != "" && !verified {
+			h.issueVerifyToken(ctx, userID, email)
+		}
+	}
+	return c.JSON(fiber.Map{"message": "If that account exists and isn't verified yet, a new verification link has been sent."})
 }
 
 // POST /v1/auth/login
@@ -164,16 +261,26 @@ func (h *AuthHandler) Login(c fiber.Ctx) error {
 	defer cancel()
 
 	var userID, orgID, role, hash, name string
+	var verified bool
 	err := h.db.QueryRow(ctx,
-		`SELECT u.id, u.org_id, u.role, u.password_hash, COALESCE(u.name, '') FROM users u WHERE u.email = $1`,
+		`SELECT u.id, u.org_id, u.role, u.password_hash, COALESCE(u.name, ''), u.email_verified FROM users u WHERE u.email = $1`,
 		body.Email,
-	).Scan(&userID, &orgID, &role, &hash, &name)
+	).Scan(&userID, &orgID, &role, &hash, &name, &verified)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid credentials"})
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(body.Password)); err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "invalid credentials"})
+	}
+
+	// Block sign-in until the email is verified. Distinct code so the UI can
+	// offer to resend the verification link.
+	if !verified {
+		return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+			"error": "email_not_verified",
+			"email": body.Email,
+		})
 	}
 
 	// Fetch default project for this org

@@ -156,6 +156,16 @@ func main() {
 		log.Warn("could not ensure feature_flags table", zap.Error(err))
 	}
 
+	// Email verification: add the column with DEFAULT true so all EXISTING users
+	// are grandfathered as verified (they signed up before this gate). New signups
+	// explicitly INSERT email_verified=false, so only post-migration accounts must
+	// verify. Idempotent — ADD COLUMN IF NOT EXISTS is a no-op once present.
+	if _, err := db.Exec(context.Background(),
+		`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT true;`,
+	); err != nil {
+		log.Warn("could not ensure users.email_verified column", zap.Error(err))
+	}
+
 	// Ensure the derived-properties table exists.
 	if _, err := db.Exec(context.Background(), `
 		CREATE TABLE IF NOT EXISTS derived_properties (
@@ -349,6 +359,8 @@ func main() {
 	authRoutes.Post("/login", authHandler.Login)
 	authRoutes.Post("/forgot", authHandler.ForgotPassword)
 	authRoutes.Post("/reset", authHandler.ResetPassword)
+	authRoutes.Post("/verify-email", authHandler.VerifyEmail)
+	authRoutes.Post("/verify-email/resend", authHandler.ResendVerification)
 
 	// SSO (OIDC) — start + callback are public; config is admin-only (below).
 	ssoHandler := handler.NewSSOHandler(db, rdb, cfg.JWTSecret, cfg.AppURL, cfg.APIURL, log)
