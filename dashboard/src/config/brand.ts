@@ -23,9 +23,9 @@ export const brand = {
   /** Short tagline shown on auth screens. */
   tagline: process.env.NEXT_PUBLIC_BRAND_TAGLINE ?? 'Clarity for every product decision.',
 
-  /** One-line description used in the HTML <title> / meta. */
+  /** One-line description used in the HTML <title> / meta. Keyword-led for SEO. */
   description:
-    process.env.NEXT_PUBLIC_BRAND_DESCRIPTION ?? 'Self-hosted product analytics platform',
+    process.env.NEXT_PUBLIC_BRAND_DESCRIPTION ?? 'Product analytics, session replay & revenue attribution',
 
   /** SDK naming — used in onboarding + settings install snippets. */
   sdk: {

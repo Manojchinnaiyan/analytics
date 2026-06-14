@@ -14,9 +14,16 @@ export const metadata: Metadata = {
   title: { default: TITLE, template: `%s — ${brand.name}` },
   description: DESC,
   keywords: [
-    'product analytics', 'session replay', 'funnel analysis', 'retention',
-    'revenue attribution', 'web analytics', 'self-hosted analytics', 'Amplitude alternative',
-    'Mixpanel alternative', 'shopify analytics', brand.name,
+    // High-intent category terms people actually search.
+    'product analytics', 'session replay', 'session recording', 'website analytics',
+    'web analytics', 'user behavior analytics', 'heatmaps', 'funnel analysis',
+    'conversion funnel', 'retention analysis', 'cohort analysis', 'revenue attribution',
+    'marketing attribution', 'customer journey analytics', 'ecommerce analytics',
+    'shopify analytics', 'privacy-first analytics',
+    // Comparison / alternative searches (high buying intent).
+    'Amplitude alternative', 'Mixpanel alternative', 'Hotjar alternative',
+    'Google Analytics alternative', 'PostHog alternative',
+    brand.name,
   ],
   alternates: { canonical: '/' },
   openGraph: {
@@ -39,9 +46,17 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
     '@type': 'SoftwareApplication',
     name: brand.name,
     applicationCategory: 'BusinessApplication',
+    applicationSubCategory: 'Analytics',
     operatingSystem: 'Web',
+    url: SITE,
     description: DESC,
-    offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+    featureList: [
+      'Product analytics', 'Session replay', 'Heatmaps', 'Funnel analysis',
+      'Retention & cohort analysis', 'Revenue attribution', 'Web vitals',
+      'E-commerce & Shopify analytics', 'Feature flags',
+    ],
+    offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD', description: 'Free plan — 10,000 events/month' },
+    sameAs: ['https://inspectuser.com'],
   }
   return (
     <div className="bg-white text-[var(--color-text)] antialiased overflow-x-clip">
