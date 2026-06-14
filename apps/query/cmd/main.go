@@ -343,7 +343,7 @@ func main() {
 
 	// Auth routes (public)
 	mail := mailer.New(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPUser, cfg.SMTPPass, cfg.SMTPFrom)
-	authHandler := handler.NewAuthHandler(db, rdb, cfg.JWTSecret, mail, cfg.AppURL, log)
+	authHandler := handler.NewAuthHandler(db, rdb, cfg.JWTSecret, mail, cfg.AppURL, cfg.AdminEmail, log)
 	authRoutes := app.Group("/v1/auth")
 	authRoutes.Post("/signup", authHandler.Signup)
 	authRoutes.Post("/login", authHandler.Login)

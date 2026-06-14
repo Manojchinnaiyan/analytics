@@ -19,16 +19,40 @@ import (
 )
 
 type AuthHandler struct {
-	db        *pgxpool.Pool
-	rdb       *redis.Client
-	jwtSecret string
-	mail      *mailer.Mailer
-	appURL    string
-	log       *zap.Logger
+	db         *pgxpool.Pool
+	rdb        *redis.Client
+	jwtSecret  string
+	mail       *mailer.Mailer
+	appURL     string
+	adminEmail string // gets a notification on each new signup
+	log        *zap.Logger
 }
 
-func NewAuthHandler(db *pgxpool.Pool, rdb *redis.Client, jwtSecret string, mail *mailer.Mailer, appURL string, log *zap.Logger) *AuthHandler {
-	return &AuthHandler{db: db, rdb: rdb, jwtSecret: jwtSecret, mail: mail, appURL: appURL, log: log}
+func NewAuthHandler(db *pgxpool.Pool, rdb *redis.Client, jwtSecret string, mail *mailer.Mailer, appURL, adminEmail string, log *zap.Logger) *AuthHandler {
+	return &AuthHandler{db: db, rdb: rdb, jwtSecret: jwtSecret, mail: mail, appURL: appURL, adminEmail: adminEmail, log: log}
+}
+
+// sendSignupEmails fires the welcome email (to the new user) and a signup
+// notification (to the admin) in the background — best-effort, never blocks or
+// fails the signup response. Uses a fresh context since the request's is done.
+func (h *AuthHandler) sendSignupEmails(name, email, orgName string) {
+	if h.mail == nil || !h.mail.Enabled() {
+		return
+	}
+	go func() {
+		// Welcome → new user.
+		subject, html := mailer.WelcomeEmail(name, h.appURL)
+		if err := h.mail.Send(email, subject, html); err != nil {
+			h.log.Warn("welcome email failed", zap.String("to", email), zap.Error(err))
+		}
+		// Notification → admin.
+		if h.adminEmail != "" {
+			s2, h2 := mailer.SignupNotifyEmail(name, email, orgName)
+			if err := h.mail.Send(h.adminEmail, s2, h2); err != nil {
+				h.log.Warn("signup notify email failed", zap.Error(err))
+			}
+		}
+	}()
 }
 
 // POST /v1/auth/signup
@@ -110,6 +134,9 @@ func (h *AuthHandler) Signup(c fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to generate token"})
 	}
+
+	// Welcome the new user + notify the admin (background, best-effort).
+	h.sendSignupEmails(body.Name, body.Email, body.OrgName)
 
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
 		"token":        token,

@@ -80,6 +80,64 @@ func InviteEmail(orgName, inviterName, role, acceptURL string) (subject, html st
 	return subject, html
 }
 
+// WelcomeEmail renders an innovative, on-brand welcome email for a new signup.
+func WelcomeEmail(name, appURL string) (subject, html string) {
+	first := name
+	if i := strings.IndexAny(name, " "); i > 0 {
+		first = name[:i]
+	}
+	hi := "there"
+	if first != "" {
+		hi = first
+	}
+	app := strings.TrimRight(appURL, "/")
+	subject = "Welcome to InspectUser 🎉 — let's find what drives your growth"
+	html = fmt.Sprintf(`<!doctype html><html><body style="margin:0;font-family:'IBM Plex Sans',-apple-system,Arial,sans-serif;background:#F4F5F6;padding:32px;">
+  <div style="max-width:520px;margin:0 auto;background:#fff;border:1px solid #DEDFE2;border-radius:16px;overflow:hidden;">
+    <div style="background:linear-gradient(135deg,#0052F2,#3B82F6);padding:36px 32px;">
+      <div style="font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#BFD3FF;">InspectUser</div>
+      <h1 style="margin:8px 0 0;font-size:26px;line-height:1.25;color:#fff;font-weight:700;">Welcome aboard, %s 👋</h1>
+    </div>
+    <div style="padding:32px;">
+      <p style="font-size:16px;color:#3A3F4B;line-height:1.6;margin:0 0 20px;">
+        You just turned on the lights. InspectUser shows you <strong>what people actually do</strong> on your product — every click, funnel, drop-off and dollar — so you stop guessing and start growing.
+      </p>
+      <p style="font-size:15px;color:#6F7480;line-height:1.6;margin:0 0 12px;font-weight:600;">Your 3-minute head start:</p>
+      <table style="width:100%%;border-collapse:collapse;margin:0 0 28px;">
+        <tr><td style="padding:10px 0;border-bottom:1px solid #EDEFF2;font-size:15px;color:#3A3F4B;">①&nbsp;&nbsp;Drop the snippet on your site (or 1-click Shopify install)</td></tr>
+        <tr><td style="padding:10px 0;border-bottom:1px solid #EDEFF2;font-size:15px;color:#3A3F4B;">②&nbsp;&nbsp;Watch live events &amp; your first session replay roll in</td></tr>
+        <tr><td style="padding:10px 0;font-size:15px;color:#3A3F4B;">③&nbsp;&nbsp;Build a funnel and see exactly where you lose people</td></tr>
+      </table>
+      <a href="%s/overview" style="display:inline-block;background:#0052F2;color:#fff;text-decoration:none;font-size:15px;font-weight:600;padding:13px 28px;border-radius:10px;">Open your dashboard →</a>
+      <p style="font-size:13px;color:#8A8E99;margin:28px 0 0;line-height:1.6;">
+        Need a hand getting set up? Just reply to this email — a real person reads it.<br>Happy building 🚀
+      </p>
+    </div>
+  </div>
+</body></html>`, hi, app)
+	return subject, html
+}
+
+// SignupNotifyEmail renders the internal "new signup" notification to the admin.
+func SignupNotifyEmail(name, email, orgName string) (subject, html string) {
+	subject = fmt.Sprintf("🎉 New InspectUser signup: %s", orgName)
+	display := name
+	if display == "" {
+		display = email
+	}
+	html = fmt.Sprintf(`<!doctype html><html><body style="font-family:'IBM Plex Sans',Arial,sans-serif;background:#F4F5F6;padding:32px;">
+  <div style="max-width:480px;margin:0 auto;background:#fff;border:1px solid #DEDFE2;border-radius:12px;padding:28px;">
+    <h1 style="font-size:19px;color:#18181B;margin:0 0 16px;">🎉 New signup</h1>
+    <table style="width:100%%;border-collapse:collapse;font-size:15px;color:#3A3F4B;">
+      <tr><td style="padding:6px 0;color:#8A8E99;width:90px;">Name</td><td style="padding:6px 0;font-weight:600;">%s</td></tr>
+      <tr><td style="padding:6px 0;color:#8A8E99;">Email</td><td style="padding:6px 0;">%s</td></tr>
+      <tr><td style="padding:6px 0;color:#8A8E99;">Org</td><td style="padding:6px 0;">%s</td></tr>
+    </table>
+  </div>
+</body></html>`, display, email, orgName)
+	return subject, html
+}
+
 // PasswordResetEmail renders the password-reset email body.
 func PasswordResetEmail(resetURL string) (subject, html string) {
 	subject = "Reset your InspectUser password"

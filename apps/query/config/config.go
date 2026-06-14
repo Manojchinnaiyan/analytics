@@ -30,6 +30,8 @@ type Config struct {
 	APIURL string
 	// IngestURL is the ingestion API origin the Shopify Web Pixel posts events to.
 	IngestURL string
+	// AdminEmail receives a notification on each new signup.
+	AdminEmail string
 	// Shopify App credentials (Partner Dashboard). Empty disables the Shopify routes.
 	ShopifyAPIKey    string
 	ShopifyAPISecret string
@@ -57,6 +59,7 @@ func Load() *Config {
 	viper.SetDefault("APP_URL", "http://localhost:3000")
 	viper.SetDefault("API_URL", "http://localhost:4001")
 	viper.SetDefault("INGEST_URL", "http://localhost:4000")
+	viper.SetDefault("ADMIN_EMAIL", "manojchinnaiyan111@gmail.com")
 	viper.SetDefault("SHOPIFY_API_KEY", "")
 	viper.SetDefault("SHOPIFY_API_SECRET", "")
 	viper.SetDefault("SHOPIFY_SCOPES", "read_orders,write_pixels,read_customer_events")
@@ -83,6 +86,7 @@ func Load() *Config {
 		AppURL:             viper.GetString("APP_URL"),
 		APIURL:             viper.GetString("API_URL"),
 		IngestURL:          viper.GetString("INGEST_URL"),
+		AdminEmail:         viper.GetString("ADMIN_EMAIL"),
 		ShopifyAPIKey:      viper.GetString("SHOPIFY_API_KEY"),
 		ShopifyAPISecret:   viper.GetString("SHOPIFY_API_SECRET"),
 		ShopifyScopes:      viper.GetString("SHOPIFY_SCOPES"),
