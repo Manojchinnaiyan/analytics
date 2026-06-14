@@ -342,10 +342,13 @@ func main() {
 	app.Get("/health", handler.Health)
 
 	// Auth routes (public)
-	authHandler := handler.NewAuthHandler(db, rdb, cfg.JWTSecret, log)
+	mail := mailer.New(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPUser, cfg.SMTPPass, cfg.SMTPFrom)
+	authHandler := handler.NewAuthHandler(db, rdb, cfg.JWTSecret, mail, cfg.AppURL, log)
 	authRoutes := app.Group("/v1/auth")
 	authRoutes.Post("/signup", authHandler.Signup)
 	authRoutes.Post("/login", authHandler.Login)
+	authRoutes.Post("/forgot", authHandler.ForgotPassword)
+	authRoutes.Post("/reset", authHandler.ResetPassword)
 
 	// SSO (OIDC) — start + callback are public; config is admin-only (below).
 	ssoHandler := handler.NewSSOHandler(db, rdb, cfg.JWTSecret, cfg.AppURL, cfg.APIURL, log)
@@ -438,7 +441,6 @@ func main() {
 	protected.Post("/projects/:id/links", linkHandler.Create)
 	protected.Delete("/projects/:id/links/:linkId", linkHandler.Delete)
 
-	mail := mailer.New(cfg.SMTPHost, cfg.SMTPPort, cfg.SMTPUser, cfg.SMTPPass, cfg.SMTPFrom)
 	teamHandler := handler.NewTeamHandler(db, rdb, log)
 	protected.Get("/team", middleware.RequirePerm(db, rdb, perms.TeamView), teamHandler.List)
 	protected.Post("/team", middleware.RequirePerm(db, rdb, perms.TeamManage), teamHandler.Create)

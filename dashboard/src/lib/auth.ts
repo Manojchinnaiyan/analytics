@@ -28,6 +28,12 @@ export const authApi = {
     org_slug: string
   }): Promise<AuthResponse> =>
     api.post('/v1/auth/signup', body).then(r => r.data),
+
+  forgotPassword: (email: string): Promise<{ message: string }> =>
+    api.post('/v1/auth/forgot', { email }).then(r => r.data),
+
+  resetPassword: (token: string, password: string): Promise<{ message: string }> =>
+    api.post('/v1/auth/reset', { token, password }).then(r => r.data),
 }
 
 const TOKEN_KEY = 'amp_token'

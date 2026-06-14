@@ -79,3 +79,19 @@ func InviteEmail(orgName, inviterName, role, acceptURL string) (subject, html st
 </body></html>`, orgName, by, role, acceptURL, acceptURL)
 	return subject, html
 }
+
+// PasswordResetEmail renders the password-reset email body.
+func PasswordResetEmail(resetURL string) (subject, html string) {
+	subject = "Reset your InspectUser password"
+	html = fmt.Sprintf(`<!doctype html><html><body style="font-family:'IBM Plex Sans',Arial,sans-serif;background:#F4F5F6;padding:32px;">
+  <div style="max-width:480px;margin:0 auto;background:#fff;border:1px solid #DEDFE2;border-radius:12px;padding:32px;">
+    <h1 style="font-size:20px;color:#18181B;margin:0 0 8px;">Reset your password</h1>
+    <p style="font-size:15px;color:#6F7480;line-height:1.5;margin:0 0 24px;">
+      We received a request to reset your InspectUser password. Click below to choose a new one. This link expires in 1 hour. If you didn't request this, you can safely ignore this email.
+    </p>
+    <a href="%s" style="display:inline-block;background:#0052F2;color:#fff;text-decoration:none;font-size:15px;font-weight:500;padding:12px 24px;border-radius:8px;">Reset password</a>
+    <p style="font-size:13px;color:#8A8E99;margin:24px 0 0;">Or paste this link into your browser:<br><span style="color:#0052F2;word-break:break-all;">%s</span></p>
+  </div>
+</body></html>`, resetURL, resetURL)
+	return subject, html
+}

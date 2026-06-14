@@ -5,9 +5,11 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"strings"
 	"time"
 
 	"github.com/inspectuser/query/internal/auth"
+	"github.com/inspectuser/query/internal/mailer"
 	"github.com/inspectuser/query/internal/perms"
 	"github.com/gofiber/fiber/v3"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -20,11 +22,13 @@ type AuthHandler struct {
 	db        *pgxpool.Pool
 	rdb       *redis.Client
 	jwtSecret string
+	mail      *mailer.Mailer
+	appURL    string
 	log       *zap.Logger
 }
 
-func NewAuthHandler(db *pgxpool.Pool, rdb *redis.Client, jwtSecret string, log *zap.Logger) *AuthHandler {
-	return &AuthHandler{db: db, rdb: rdb, jwtSecret: jwtSecret, log: log}
+func NewAuthHandler(db *pgxpool.Pool, rdb *redis.Client, jwtSecret string, mail *mailer.Mailer, appURL string, log *zap.Logger) *AuthHandler {
+	return &AuthHandler{db: db, rdb: rdb, jwtSecret: jwtSecret, mail: mail, appURL: appURL, log: log}
 }
 
 // POST /v1/auth/signup
@@ -204,6 +208,88 @@ func (h *AuthHandler) Refresh(c fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to generate token"})
 	}
 	return c.JSON(fiber.Map{"token": token})
+}
+
+const pwResetTTL = time.Hour
+
+// POST /v1/auth/forgot — body {email}. If the email maps to a user, issue a
+// one-time reset token (stored in Redis, 1h TTL) and email a reset link. We
+// ALWAYS return the same generic 200 regardless of whether the email exists, so
+// the endpoint can't be used to enumerate accounts. When SMTP is disabled the
+// link is logged server-side (never returned in the response) for dev use.
+func (h *AuthHandler) ForgotPassword(c fiber.Ctx) error {
+	var body struct {
+		Email string `json:"email"`
+	}
+	if err := c.Bind().JSON(&body); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": errInvalidJSON})
+	}
+	email := strings.ToLower(strings.TrimSpace(body.Email))
+
+	const generic = "If an account exists for that email, a password reset link has been sent."
+
+	if email != "" {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		var userID string
+		if err := h.db.QueryRow(ctx, `SELECT id FROM users WHERE email = $1`, email).Scan(&userID); err == nil && userID != "" {
+			token := genKey(32)
+			if err := h.rdb.Set(ctx, "pwreset:"+token, userID, pwResetTTL).Err(); err != nil {
+				h.log.Error("failed to store reset token", zap.Error(err))
+				return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to start reset"})
+			}
+			resetURL := strings.TrimRight(h.appURL, "/") + "/reset-password?token=" + token
+			if h.mail != nil && h.mail.Enabled() {
+				subject, html := mailer.PasswordResetEmail(resetURL)
+				if err := h.mail.Send(email, subject, html); err != nil {
+					h.log.Warn("password reset email failed", zap.Error(err))
+				}
+			} else {
+				// SMTP not configured — log the link so it's usable in dev. Never
+				// return it in the response (would leak the token / account existence).
+				h.log.Info("password reset link (SMTP disabled)", zap.String("email", email), zap.String("reset_url", resetURL))
+			}
+		}
+	}
+
+	return c.JSON(fiber.Map{"message": generic})
+}
+
+// POST /v1/auth/reset — body {token, password}. Verifies the one-time reset
+// token, sets the new password, and invalidates the token (single use).
+func (h *AuthHandler) ResetPassword(c fiber.Ctx) error {
+	var body struct {
+		Token    string `json:"token"`
+		Password string `json:"password"`
+	}
+	if err := c.Bind().JSON(&body); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": errInvalidJSON})
+	}
+	if body.Token == "" || len(body.Password) < 8 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "token and a password of at least 8 characters are required"})
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	key := "pwreset:" + body.Token
+	userID, err := h.rdb.Get(ctx, key).Result()
+	if err != nil || userID == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "this reset link is invalid or has expired"})
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(body.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to set password"})
+	}
+	if _, err := h.db.Exec(ctx, `UPDATE users SET password_hash = $1 WHERE id = $2`, string(hash), userID); err != nil {
+		h.log.Error("failed to update password", zap.Error(err))
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to set password"})
+	}
+	h.rdb.Del(ctx, key) // one-time use
+
+	return c.JSON(fiber.Map{"message": "Your password has been reset. You can now sign in."})
 }
 
 // GET /v1/me — returns the logged-in user + their default project.
