@@ -166,6 +166,50 @@ function useClipboard() {
   return { copied, copy }
 }
 
+// Change the signed-in user's password.
+function PasswordSection() {
+  const [cur, setCur] = useState('')
+  const [next, setNext] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault()
+    setMsg(null)
+    if (next.length < 8) { setMsg({ ok: false, text: 'New password must be at least 8 characters.' }); return }
+    if (next !== confirm) { setMsg({ ok: false, text: 'New passwords do not match.' }); return }
+    setSaving(true)
+    try {
+      await api.changePassword(cur, next)
+      setMsg({ ok: true, text: 'Password updated.' })
+      setCur(''); setNext(''); setConfirm('')
+    } catch (e: unknown) {
+      const ax = e as { response?: { data?: { error?: string } } }
+      setMsg({ ok: false, text: ax.response?.data?.error ?? 'Failed to update password.' })
+    } finally { setSaving(false) }
+  }
+
+  return (
+    <section className="glass rounded-lg p-6">
+      <div className="flex items-center gap-2 mb-1">
+        <KeyRound className="h-4 w-4 text-[#0052F2]" />
+        <h2 className="type-h3-16 text-[#18181B]">Change password</h2>
+      </div>
+      <p className="type-body-13 text-[#6F7480] mb-4">Update the password you use to sign in.</p>
+      <form onSubmit={submit} className="space-y-3 max-w-sm">
+        <input type="password" className="ctrl w-full" placeholder="Current password" value={cur} onChange={e => setCur(e.target.value)} autoComplete="current-password" required />
+        <input type="password" className="ctrl w-full" placeholder="New password (min 8 chars)" value={next} onChange={e => setNext(e.target.value)} autoComplete="new-password" required />
+        <input type="password" className="ctrl w-full" placeholder="Confirm new password" value={confirm} onChange={e => setConfirm(e.target.value)} autoComplete="new-password" required />
+        {msg && <p className={`type-body-13 ${msg.ok ? 'text-green-600' : 'text-red-600'}`}>{msg.text}</p>}
+        <button type="submit" disabled={saving} className="px-4 py-2 bg-[#0052F2] text-white rounded-lg type-body-13 font-medium hover:bg-[#0043c4] disabled:opacity-50 transition-colors">
+          {saving ? 'Updating…' : 'Update password'}
+        </button>
+      </form>
+    </section>
+  )
+}
+
 export default function SettingsPage() {
   const { projectId, apiKey, projectName, userName, email } = useProjectStore()
   const [platform, setPlatform] = useState<Platform>('browser')
@@ -240,6 +284,8 @@ export default function SettingsPage() {
 
       {/* Team */}
       <TimezoneSection projectId={projectId} />
+
+      <PasswordSection />
 
       <SSOSection />
 

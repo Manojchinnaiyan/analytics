@@ -188,6 +188,8 @@ export const api = {
     queryApi.put('/v1/orgs/sso', body).then(r => r.data),
   refreshToken: (): Promise<{ token: string }> =>
     queryApi.post('/v1/auth/refresh').then(r => r.data),
+  changePassword: (current_password: string, new_password: string): Promise<{ message: string }> =>
+    queryApi.post('/v1/auth/change-password', { current_password, new_password }).then(r => r.data),
 
   projects: () => queryApi.get('/v1/projects').then(r => r.data),
   createProject: (name: string) => queryApi.post('/v1/projects', { name }).then(r => r.data),

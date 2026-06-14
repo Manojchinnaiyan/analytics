@@ -426,6 +426,45 @@ func (h *AuthHandler) ResetPassword(c fiber.Ctx) error {
 	return c.JSON(fiber.Map{"message": "Your password has been reset. You can now sign in."})
 }
 
+// POST /v1/auth/change-password — authenticated. Body {current_password,
+// new_password}. Verifies the current password before setting the new one.
+func (h *AuthHandler) ChangePassword(c fiber.Ctx) error {
+	userID, _ := c.Locals("user_id").(string)
+	if userID == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthenticated"})
+	}
+	var body struct {
+		CurrentPassword string `json:"current_password"`
+		NewPassword     string `json:"new_password"`
+	}
+	if err := c.Bind().JSON(&body); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": errInvalidJSON})
+	}
+	if len(body.NewPassword) < 8 {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "new password must be at least 8 characters"})
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var hash string
+	if err := h.db.QueryRow(ctx, `SELECT password_hash FROM users WHERE id = $1`, userID).Scan(&hash); err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "unauthenticated"})
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(body.CurrentPassword)); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "current password is incorrect"})
+	}
+
+	newHash, err := bcrypt.GenerateFromPassword([]byte(body.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to set password"})
+	}
+	if _, err := h.db.Exec(ctx, `UPDATE users SET password_hash = $1 WHERE id = $2`, string(newHash), userID); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "failed to set password"})
+	}
+	return c.JSON(fiber.Map{"message": "Password updated."})
+}
+
 // GET /v1/me — returns the logged-in user + their default project.
 // Used by the dashboard to reliably load project_id + api_key on every load,
 // so it never relies on a possibly-stale persisted store.

@@ -108,8 +108,9 @@ func WelcomeEmail(name, appURL string) (subject, html string) {
   <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #E7EAEE;">
 
     <!-- Brand bar -->
-    <tr><td style="padding:22px 40px;border-bottom:1px solid #F0F2F5;">
-      <span style="font-size:17px;font-weight:700;color:#0052F2;letter-spacing:-.01em;">◆ InspectUser</span>
+    <tr><td style="padding:20px 40px;border-bottom:1px solid #F0F2F5;">
+      <img src="https://inspectuser.com/email-logo.png" width="28" height="28" alt="InspectUser" style="vertical-align:middle;border-radius:7px;display:inline-block;">
+      <span style="font-size:17px;font-weight:700;color:#0B1220;letter-spacing:-.01em;vertical-align:middle;margin-left:9px;">InspectUser</span>
     </td></tr>
 
     <!-- Hero (clean, centered, landing-page style) -->
@@ -191,7 +192,10 @@ func WelcomeEmail(name, appURL string) (subject, html string) {
 
     <!-- Footer -->
     <tr><td style="padding:32px 40px;margin-top:24px;background:#0B1220;">
-      <div style="font-size:16px;font-weight:700;color:#ffffff;margin-bottom:12px;">◆ InspectUser</div>
+      <div style="margin-bottom:12px;">
+        <img src="https://inspectuser.com/email-logo-white.png" width="22" height="22" alt="" style="vertical-align:middle;display:inline-block;">
+        <span style="font-size:16px;font-weight:700;color:#ffffff;vertical-align:middle;margin-left:8px;">InspectUser</span>
+      </div>
       <div style="font-size:13px;line-height:1.7;">
         <a href="{{APP}}/features" style="color:#AEB6C2;text-decoration:none;">Features</a>&nbsp;&nbsp;·&nbsp;&nbsp;
         <a href="{{APP}}/pricing" style="color:#AEB6C2;text-decoration:none;">Pricing</a>&nbsp;&nbsp;·&nbsp;&nbsp;
@@ -243,8 +247,11 @@ func VerificationEmail(verifyURL string) (subject, html string) {
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#EEF1F5;padding:32px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
 <tr><td align="center">
   <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 1px 4px rgba(16,24,40,.08);">
-    <tr><td bgcolor="#0052F2" style="background:#0052F2;background:linear-gradient(135deg,#0052F2 0%,#5B8DEF 100%);padding:36px 40px;">
-      <div style="font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#C7DAFF;margin-bottom:12px;">● INSPECTUSER</div>
+    <tr><td bgcolor="#0052F2" style="background:#0052F2;background:linear-gradient(135deg,#0052F2 0%,#5B8DEF 100%);padding:32px 40px 34px;">
+      <div style="margin-bottom:18px;">
+        <img src="https://inspectuser.com/email-logo-white.png" width="26" height="26" alt="" style="vertical-align:middle;display:inline-block;">
+        <span style="font-size:16px;font-weight:700;color:#ffffff;vertical-align:middle;margin-left:8px;">InspectUser</span>
+      </div>
       <h1 style="margin:0;font-size:26px;line-height:1.25;color:#ffffff;font-weight:700;">Confirm your email ✉️</h1>
     </td></tr>
     <tr><td style="padding:32px 40px;">

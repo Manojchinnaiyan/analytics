@@ -372,6 +372,7 @@ func main() {
 
 	protected.Get("/me", authHandler.Me)
 	protected.Post("/auth/refresh", authHandler.Refresh)
+	protected.Post("/auth/change-password", authHandler.ChangePassword)
 	protected.Get("/orgs/sso", middleware.RequirePerm(db, rdb, perms.SettingsManage), ssoHandler.GetConfig)
 	protected.Put("/orgs/sso", middleware.RequirePerm(db, rdb, perms.SettingsManage), ssoHandler.SetConfig)
 
