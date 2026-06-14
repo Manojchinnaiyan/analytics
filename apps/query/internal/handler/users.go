@@ -79,52 +79,59 @@ func (h *UserHandler) Profile(c fiber.Ctx) error {
 	userID := c.Params("userId")
 	ctx := c.Context()
 
-	// Summary + latest user properties
+	// Summary + latest user properties, and the event timeline, are independent
+	// queries — fetch them concurrently.
 	var events, eventTypes uint64
 	var firstSeen, lastSeen time.Time
 	var userProps, platform, country string
 	var isKnown uint8
-	_ = h.ch.QueryRow(ctx, `
-		SELECT
-			count(),
-			uniq(event_type),
-			min(event_time),
-			max(event_time),
-			argMax(user_properties, event_time),
-			argMax(platform, event_time),
-			argMax(country, event_time),
-			max(toUInt8(user_id != ''))
-		FROM inspectuser.events
-		WHERE project_id = ? AND `+identityExpr+` = ?
-	`, projectID, userID).Scan(&events, &eventTypes, &firstSeen, &lastSeen, &userProps, &platform, &country, &isKnown)
+	timeline := []map[string]any{}
+
+	parallel(
+		func() {
+			_ = h.ch.QueryRow(ctx, `
+				SELECT
+					count(),
+					uniq(event_type),
+					min(event_time),
+					max(event_time),
+					argMax(user_properties, event_time),
+					argMax(platform, event_time),
+					argMax(country, event_time),
+					max(toUInt8(user_id != ''))
+				FROM inspectuser.events
+				WHERE project_id = ? AND `+identityExpr+` = ?
+			`, projectID, userID).Scan(&events, &eventTypes, &firstSeen, &lastSeen, &userProps, &platform, &country, &isKnown)
+		},
+		func() {
+			// Event timeline (most recent 100)
+			rows, err := h.ch.Query(ctx, `
+				SELECT event_type, event_time, properties, platform
+				FROM inspectuser.events
+				WHERE project_id = ? AND `+identityExpr+` = ?
+				ORDER BY event_time DESC
+				LIMIT 100
+			`, projectID, userID)
+			if err == nil {
+				defer rows.Close()
+				for rows.Next() {
+					var et, props, plat string
+					var t time.Time
+					if rows.Scan(&et, &t, &props, &plat) == nil {
+						timeline = append(timeline, map[string]any{
+							"event_type": et,
+							"event_time": t,
+							"properties": props,
+							"platform":   plat,
+						})
+					}
+				}
+			}
+		},
+	)
 
 	if events == 0 {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "user not found"})
-	}
-
-	// Event timeline (most recent 100)
-	timeline := []map[string]any{}
-	rows, err := h.ch.Query(ctx, `
-		SELECT event_type, event_time, properties, platform
-		FROM inspectuser.events
-		WHERE project_id = ? AND `+identityExpr+` = ?
-		ORDER BY event_time DESC
-		LIMIT 100
-	`, projectID, userID)
-	if err == nil {
-		defer rows.Close()
-		for rows.Next() {
-			var et, props, plat string
-			var t time.Time
-			if rows.Scan(&et, &t, &props, &plat) == nil {
-				timeline = append(timeline, map[string]any{
-					"event_type": et,
-					"event_time": t,
-					"properties": props,
-					"platform":   plat,
-				})
-			}
-		}
 	}
 
 	return c.JSON(fiber.Map{

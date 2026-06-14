@@ -26,10 +26,8 @@ func (h *ProductHandler) WebGoals(c fiber.Ctx) error {
 	flt := webFilter(c)
 	base := `project_id = ? AND event_type = 'Page Viewed' AND event_time >= toDate('` + since + `')` + flt
 
-	// Denominator: distinct filtered visitors in the window.
-	var visitors uint64
-	_ = h.ch.QueryRow(ctx, `SELECT uniq(`+identityExpr+`) FROM inspectuser.events WHERE `+base, projectID).Scan(&visitors)
-
+	// Goals come from Postgres and drive the per-goal ClickHouse queries, so they
+	// must be fetched first.
 	pctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	grows, err := h.db.Query(pctx, `SELECT id::text, name, type, match FROM web_goals WHERE project_id = $1 ORDER BY created_at`, projectID)
@@ -46,22 +44,38 @@ func (h *ProductHandler) WebGoals(c fiber.Ctx) error {
 	}
 	grows.Close()
 
-	out := []fiber.Map{}
-	for _, g := range goals {
+	// The visitors denominator and each goal's conversion count are independent
+	// ClickHouse reads, so run them concurrently. Each func writes only its own
+	// slot; the conversion rate (derived from both) is computed afterward.
+	var visitors uint64                 // distinct filtered visitors in the window.
+	convs := make([]uint64, len(goals)) // convs[i] = conversions for goals[i].
+	fns := make([]func(), 0, len(goals)+1)
+	fns = append(fns, func() {
+		_ = h.ch.QueryRow(ctx, `SELECT uniq(`+identityExpr+`) FROM inspectuser.events WHERE `+base, projectID).Scan(&visitors)
+	})
+	for i, g := range goals {
+		i, g := i, g
 		// Goal predicate: an event_type, or a Page Viewed on a specific path.
 		cond := "event_type = '" + sqlStrip(g.match) + "'"
 		if g.gtype == "page" {
 			cond = "event_type = 'Page Viewed' AND JSONExtractString(properties, 'path') = '" + sqlStrip(g.match) + "'"
 		}
-		var conv uint64
-		_ = h.ch.QueryRow(ctx, `
-			SELECT uniq(gg.id) FROM
-				(SELECT DISTINCT `+identityExpr+` AS id FROM inspectuser.events
-				 WHERE project_id = ? AND `+cond+` AND event_time >= toDate('`+since+`')) gg
-			INNER JOIN
-				(SELECT DISTINCT `+identityExpr+` AS id FROM inspectuser.events WHERE `+base+`) v
-			ON gg.id = v.id
-		`, projectID, projectID).Scan(&conv)
+		fns = append(fns, func() {
+			_ = h.ch.QueryRow(ctx, `
+				SELECT uniq(gg.id) FROM
+					(SELECT DISTINCT `+identityExpr+` AS id FROM inspectuser.events
+					 WHERE project_id = ? AND `+cond+` AND event_time >= toDate('`+since+`')) gg
+				INNER JOIN
+					(SELECT DISTINCT `+identityExpr+` AS id FROM inspectuser.events WHERE `+base+`) v
+				ON gg.id = v.id
+			`, projectID, projectID).Scan(&convs[i])
+		})
+	}
+	parallel(fns...)
+
+	out := []fiber.Map{}
+	for i, g := range goals {
+		conv := convs[i]
 		rate := 0.0
 		if visitors > 0 {
 			rate = float64(conv) / float64(visitors)

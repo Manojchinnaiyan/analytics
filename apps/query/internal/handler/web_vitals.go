@@ -32,49 +32,57 @@ func (h *ProductHandler) WebVitals(c fiber.Ctx) error {
 		return x
 	}
 
+	// The overall p75 row and the per-page breakdown are independent reads, so
+	// they run concurrently. Each func writes only its own variables.
 	var lcp, cls, fcp, inp, load float64
 	var samples uint64
-	_ = h.ch.QueryRow(ctx, `
-		SELECT
-			quantileIf(0.75)(JSONExtractFloat(properties,'lcp_ms'), JSONHas(properties,'lcp_ms')) AS lcp,
-			quantileIf(0.75)(JSONExtractFloat(properties,'cls'),    JSONHas(properties,'cls'))    AS cls,
-			quantileIf(0.75)(JSONExtractFloat(properties,'fcp_ms'), JSONHas(properties,'fcp_ms')) AS fcp,
-			quantileIf(0.75)(JSONExtractFloat(properties,'inp_ms'), JSONHas(properties,'inp_ms')) AS inp,
-			quantileIf(0.75)(JSONExtractFloat(properties,'load_ms'),JSONHas(properties,'load_ms'))AS load,
-			count() AS samples
-		FROM inspectuser.events WHERE `+where, projectID).
-		Scan(&lcp, &cls, &fcp, &inp, &load, &samples)
-
-	// Per-page p75 (top pages by sample volume).
 	pages := []fiber.Map{}
-	if rows, err := h.ch.Query(ctx, `
-		SELECT path, samples, lcp, cls, fcp, inp FROM (
-			SELECT JSONExtractString(properties,'path') AS path, count() AS samples,
-				quantileIf(0.75)(JSONExtractFloat(properties,'lcp_ms'), JSONHas(properties,'lcp_ms')) AS lcp,
-				quantileIf(0.75)(JSONExtractFloat(properties,'cls'),    JSONHas(properties,'cls'))    AS cls,
-				quantileIf(0.75)(JSONExtractFloat(properties,'fcp_ms'), JSONHas(properties,'fcp_ms')) AS fcp,
-				quantileIf(0.75)(JSONExtractFloat(properties,'inp_ms'), JSONHas(properties,'inp_ms')) AS inp
-			FROM inspectuser.events WHERE `+where+`
-			GROUP BY path
-		) ORDER BY samples DESC LIMIT 12
-	`, projectID); err == nil {
-		defer rows.Close()
-		for rows.Next() {
-			var path string
-			var s uint64
-			var pl, pc, pf, pi float64
-			if rows.Scan(&path, &s, &pl, &pc, &pf, &pi) != nil {
-				continue
+
+	parallel(
+		func() {
+			_ = h.ch.QueryRow(ctx, `
+				SELECT
+					quantileIf(0.75)(JSONExtractFloat(properties,'lcp_ms'), JSONHas(properties,'lcp_ms')) AS lcp,
+					quantileIf(0.75)(JSONExtractFloat(properties,'cls'),    JSONHas(properties,'cls'))    AS cls,
+					quantileIf(0.75)(JSONExtractFloat(properties,'fcp_ms'), JSONHas(properties,'fcp_ms')) AS fcp,
+					quantileIf(0.75)(JSONExtractFloat(properties,'inp_ms'), JSONHas(properties,'inp_ms')) AS inp,
+					quantileIf(0.75)(JSONExtractFloat(properties,'load_ms'),JSONHas(properties,'load_ms'))AS load,
+					count() AS samples
+				FROM inspectuser.events WHERE `+where, projectID).
+				Scan(&lcp, &cls, &fcp, &inp, &load, &samples)
+		},
+		func() {
+			// Per-page p75 (top pages by sample volume).
+			if rows, err := h.ch.Query(ctx, `
+				SELECT path, samples, lcp, cls, fcp, inp FROM (
+					SELECT JSONExtractString(properties,'path') AS path, count() AS samples,
+						quantileIf(0.75)(JSONExtractFloat(properties,'lcp_ms'), JSONHas(properties,'lcp_ms')) AS lcp,
+						quantileIf(0.75)(JSONExtractFloat(properties,'cls'),    JSONHas(properties,'cls'))    AS cls,
+						quantileIf(0.75)(JSONExtractFloat(properties,'fcp_ms'), JSONHas(properties,'fcp_ms')) AS fcp,
+						quantileIf(0.75)(JSONExtractFloat(properties,'inp_ms'), JSONHas(properties,'inp_ms')) AS inp
+					FROM inspectuser.events WHERE `+where+`
+					GROUP BY path
+				) ORDER BY samples DESC LIMIT 12
+			`, projectID); err == nil {
+				defer rows.Close()
+				for rows.Next() {
+					var path string
+					var s uint64
+					var pl, pc, pf, pi float64
+					if rows.Scan(&path, &s, &pl, &pc, &pf, &pi) != nil {
+						continue
+					}
+					if path == "" {
+						path = "(no path)"
+					}
+					pages = append(pages, fiber.Map{
+						"value": path, "samples": s,
+						"lcp": clamp(pl), "cls": clamp(pc), "fcp": clamp(pf), "inp": clamp(pi),
+					})
+				}
 			}
-			if path == "" {
-				path = "(no path)"
-			}
-			pages = append(pages, fiber.Map{
-				"value": path, "samples": s,
-				"lcp": clamp(pl), "cls": clamp(pc), "fcp": clamp(pf), "inp": clamp(pi),
-			})
-		}
-	}
+		},
+	)
 
 	return c.JSON(fiber.Map{
 		"samples": samples,

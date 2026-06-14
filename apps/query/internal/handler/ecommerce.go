@@ -38,9 +38,14 @@ func (h *EcommerceHandler) Overview(c fiber.Ctx) error {
 	ctx := c.Context()
 	since := ecomSince(c)
 
+	// Three independent queries (headline KPIs, funnel, daily trend) — run concurrently.
 	var revenue, units float64
 	var orders, sessions, converting uint64
-	_ = h.ch.QueryRow(ctx, `
+	var viewed, carted, checkout, purchased uint64
+	trend := []fiber.Map{}
+	parallel(
+		func() {
+			_ = h.ch.QueryRow(ctx, `
 		SELECT
 			sumIf(`+revExpr+`, event_type='Order Completed'),
 			countIf(event_type='Order Completed'),
@@ -49,11 +54,11 @@ func (h *EcommerceHandler) Overview(c fiber.Ctx) error {
 			uniqExactIf(session_id, event_type='Order Completed')
 		FROM inspectuser.events
 		WHERE project_id = ? AND event_time >= ?`,
-		projectID, since,
-	).Scan(&revenue, &orders, &units, &sessions, &converting)
-
-	var viewed, carted, checkout, purchased uint64
-	_ = h.ch.QueryRow(ctx, `
+				projectID, since,
+			).Scan(&revenue, &orders, &units, &sessions, &converting)
+		},
+		func() {
+			_ = h.ch.QueryRow(ctx, `
 		SELECT
 			uniqExactIf(session_id, event_type='Product Viewed'),
 			uniqExactIf(session_id, event_type='Product Added to Cart'),
@@ -61,12 +66,12 @@ func (h *EcommerceHandler) Overview(c fiber.Ctx) error {
 			uniqExactIf(session_id, event_type='Order Completed')
 		FROM inspectuser.events
 		WHERE project_id = ? AND event_time >= ?`,
-		projectID, since,
-	).Scan(&viewed, &carted, &checkout, &purchased)
-
-	// Daily trend for the chart.
-	trend := []fiber.Map{}
-	if rows, err := h.ch.Query(ctx, `
+				projectID, since,
+			).Scan(&viewed, &carted, &checkout, &purchased)
+		},
+		func() {
+			// Daily trend for the chart.
+			if rows, err := h.ch.Query(ctx, `
 		SELECT toString(toDate(event_time)) AS d,
 			sumIf(`+revExpr+`, event_type='Order Completed') AS rev,
 			countIf(event_type='Order Completed') AS ord,
@@ -74,16 +79,18 @@ func (h *EcommerceHandler) Overview(c fiber.Ctx) error {
 		FROM inspectuser.events
 		WHERE project_id = ? AND event_time >= ?
 		GROUP BY d ORDER BY d`, projectID, since); err == nil {
-		defer rows.Close()
-		for rows.Next() {
-			var d string
-			var rev float64
-			var ord, vw uint64
-			if rows.Scan(&d, &rev, &ord, &vw) == nil {
-				trend = append(trend, fiber.Map{"date": d, "revenue": rev, "orders": ord, "views": vw})
+				defer rows.Close()
+				for rows.Next() {
+					var d string
+					var rev float64
+					var ord, vw uint64
+					if rows.Scan(&d, &rev, &ord, &vw) == nil {
+						trend = append(trend, fiber.Map{"date": d, "revenue": rev, "orders": ord, "views": vw})
+					}
+				}
 			}
-		}
-	}
+		},
+	)
 
 	aov := 0.0
 	if orders > 0 {

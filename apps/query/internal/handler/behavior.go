@@ -82,37 +82,64 @@ func (h *ProductHandler) Lifecycle(c fiber.Ctx) error {
 	// first rendered day. cutoff == today-days == (winStart - 1).
 	cutoff := time.Now().UTC().AddDate(0, 0, -days).Format(dateFmt)
 
-	rows, err := h.ch.Query(ctx, `
-		SELECT id, groupUniqArrayIf(d, d >= toDate(?)) AS act_days, min(d) AS first_seen
-		FROM (
-			SELECT `+identityExpr+` AS id, toDate(event_time) AS d
-			FROM inspectuser.events WHERE project_id = ?
-		)
-		GROUP BY id
-		HAVING max(d) >= toDate(?)
-	`, cutoff, projectID, cutoff)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
-	}
-	defer rows.Close()
-
 	type uinfo struct {
 		active map[string]bool
 		first  string
 	}
 	users := []uinfo{}
-	for rows.Next() {
-		var id string
-		var ds []time.Time
-		var first time.Time
-		if rows.Scan(&id, &ds, &first) != nil {
-			continue
-		}
-		m := make(map[string]bool, len(ds))
-		for _, d := range ds {
-			m[d.Format(dateFmt)] = true
-		}
-		users = append(users, uinfo{active: m, first: first.Format(dateFmt)})
+
+	// Lifecycle breakdown and the stickiness ratios are independent queries —
+	// fetch them concurrently. The per-day series (which depends only on `users`)
+	// is built after both have completed.
+	var dau, wau, mau uint64
+	var lifecycleErr error
+
+	parallel(
+		func() {
+			rows, err := h.ch.Query(ctx, `
+				SELECT id, groupUniqArrayIf(d, d >= toDate(?)) AS act_days, min(d) AS first_seen
+				FROM (
+					SELECT `+identityExpr+` AS id, toDate(event_time) AS d
+					FROM inspectuser.events WHERE project_id = ?
+				)
+				GROUP BY id
+				HAVING max(d) >= toDate(?)
+			`, cutoff, projectID, cutoff)
+			if err != nil {
+				lifecycleErr = err
+				return
+			}
+			defer rows.Close()
+			for rows.Next() {
+				var id string
+				var ds []time.Time
+				var first time.Time
+				if rows.Scan(&id, &ds, &first) != nil {
+					continue
+				}
+				m := make(map[string]bool, len(ds))
+				for _, d := range ds {
+					m[d.Format(dateFmt)] = true
+				}
+				users = append(users, uinfo{active: m, first: first.Format(dateFmt)})
+			}
+		},
+		func() {
+			// Stickiness ratios.
+			_ = h.ch.QueryRow(ctx, `
+				SELECT
+					uniqIf(id, d = today())                  AS dau,
+					uniqIf(id, ts >= now() - INTERVAL 7 DAY) AS wau,
+					uniqIf(id, ts >= now() - INTERVAL 30 DAY) AS mau
+				FROM (
+					SELECT `+identityExpr+` AS id, event_time AS ts, toDate(event_time) AS d
+					FROM inspectuser.events WHERE project_id = ?
+				)
+			`, projectID).Scan(&dau, &wau, &mau)
+		},
+	)
+	if lifecycleErr != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": lifecycleErr.Error()})
 	}
 
 	type day struct {
@@ -143,19 +170,6 @@ func (h *ProductHandler) Lifecycle(c fiber.Ctx) error {
 		}
 		series = append(series, d)
 	}
-
-	// Stickiness ratios.
-	var dau, wau, mau uint64
-	_ = h.ch.QueryRow(ctx, `
-		SELECT
-			uniqIf(id, d = today())                  AS dau,
-			uniqIf(id, ts >= now() - INTERVAL 7 DAY) AS wau,
-			uniqIf(id, ts >= now() - INTERVAL 30 DAY) AS mau
-		FROM (
-			SELECT `+identityExpr+` AS id, event_time AS ts, toDate(event_time) AS d
-			FROM inspectuser.events WHERE project_id = ?
-		)
-	`, projectID).Scan(&dau, &wau, &mau)
 
 	ratio := func(a, b uint64) float64 {
 		if b == 0 {

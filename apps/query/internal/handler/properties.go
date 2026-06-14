@@ -53,9 +53,17 @@ func (h *QueryHandler) Properties(c fiber.Ctx) error {
 		sys = append(sys, fiber.Map{"key": p})
 	}
 
+	// Event- and user-property discovery hit different columns and are independent —
+	// run them concurrently.
+	var eventProps, userProps []fiber.Map
+	parallel(
+		func() { eventProps = discover("properties") },
+		func() { userProps = discover("user_properties") },
+	)
+
 	return c.JSON(fiber.Map{
-		"event_properties":  discover("properties"),
-		"user_properties":   discover("user_properties"),
+		"event_properties":  eventProps,
+		"user_properties":   userProps,
 		"system_properties": sys,
 	})
 }
@@ -81,25 +89,34 @@ func (h *QueryHandler) PropertyDetail(c fiber.Ctx) error {
 		}
 	}
 
+	// Aggregate stats and the sample-values list are independent queries — fetch
+	// them concurrently.
 	var count, distinct uint64
 	var first, last time.Time
-	_ = h.ch.QueryRow(c.Context(), `
-		SELECT countIf(`+expr+` != ''), uniqIf(`+expr+`, `+expr+` != ''), min(event_time), max(event_time)
-		FROM inspectuser.events WHERE project_id = ?
-	`, projectID).Scan(&count, &distinct, &first, &last)
-
 	samples := []string{}
-	if srows, err := h.ch.Query(c.Context(), `
-		SELECT DISTINCT `+expr+` AS v FROM inspectuser.events WHERE project_id = ? AND `+expr+` != '' LIMIT 8
-	`, projectID); err == nil {
-		defer srows.Close()
-		for srows.Next() {
-			var v string
-			if srows.Scan(&v) == nil {
-				samples = append(samples, v)
+	ctx := c.Context()
+
+	parallel(
+		func() {
+			_ = h.ch.QueryRow(ctx, `
+				SELECT countIf(`+expr+` != ''), uniqIf(`+expr+`, `+expr+` != ''), min(event_time), max(event_time)
+				FROM inspectuser.events WHERE project_id = ?
+			`, projectID).Scan(&count, &distinct, &first, &last)
+		},
+		func() {
+			if srows, err := h.ch.Query(ctx, `
+				SELECT DISTINCT `+expr+` AS v FROM inspectuser.events WHERE project_id = ? AND `+expr+` != '' LIMIT 8
+			`, projectID); err == nil {
+				defer srows.Close()
+				for srows.Next() {
+					var v string
+					if srows.Scan(&v) == nil {
+						samples = append(samples, v)
+					}
+				}
 			}
-		}
-	}
+		},
+	)
 
 	return c.JSON(fiber.Map{
 		"key": key, "type": typ, "count": count, "distinct": distinct,

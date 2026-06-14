@@ -28,10 +28,14 @@ func (h *ProductHandler) Revenue(c fiber.Ctx) error {
 	const rev = `event_type = 'Revenue'`
 	const amt = `JSONExtractFloat(properties, '$revenue')`
 
-	// Headline for the range and the immediately-prior range (for deltas).
+	// Headline for the range and the immediately-prior range (for deltas), plus
+	// active users in range — two independent queries, run concurrently.
 	var totalRev, prevRev float64
 	var purchases, payers, prevPayers uint64
-	_ = h.ch.QueryRow(ctx, `
+	var activeUsers uint64
+	parallel(
+		func() {
+			_ = h.ch.QueryRow(ctx, `
 		SELECT
 			sumIf(`+amt+`, event_time >= today() - ?)                                 AS rev,
 			countIf(event_time >= today() - ?)                                        AS purchases,
@@ -41,13 +45,15 @@ func (h *ProductHandler) Revenue(c fiber.Ctx) error {
 		FROM inspectuser.events
 		WHERE project_id = ? AND `+rev+`
 	`, win, win, win, int64(2*days-1), win, int64(2*days-1), win, projectID).
-		Scan(&totalRev, &purchases, &payers, &prevRev, &prevPayers)
-
-	// Active users in range (denominator for ARPU + paid conversion).
-	var activeUsers uint64
-	_ = h.ch.QueryRow(ctx,
-		`SELECT uniq(`+identityExpr+`) FROM inspectuser.events WHERE project_id = ? AND event_time >= today() - ?`,
-		projectID, win).Scan(&activeUsers)
+				Scan(&totalRev, &purchases, &payers, &prevRev, &prevPayers)
+		},
+		func() {
+			// Active users in range (denominator for ARPU + paid conversion).
+			_ = h.ch.QueryRow(ctx,
+				`SELECT uniq(`+identityExpr+`) FROM inspectuser.events WHERE project_id = ? AND event_time >= today() - ?`,
+				projectID, win).Scan(&activeUsers)
+		},
+	)
 
 	div := func(a float64, b uint64) float64 {
 		if b == 0 {

@@ -318,25 +318,35 @@ func (h *QueryHandler) Usage(c fiber.Ctx) error {
 	projectID := c.Params("id")
 	ctx := c.Context()
 
+	// Independent reads (ClickHouse monthly usage + Postgres plan limit) — concurrent.
 	months := []map[string]any{}
-	rows, err := h.ch.Query(ctx, `
-		SELECT toYYYYMM(event_time) AS m,
-		       count() AS events,
-		       uniqExact(if(user_id != '', user_id, device_id)) AS mtu
-		FROM inspectuser.events
-		WHERE project_id = ?
-		  AND event_time >= toStartOfMonth(now()) - INTERVAL 11 MONTH
-		GROUP BY m ORDER BY m`, projectID)
-	if err == nil {
-		defer rows.Close()
-		for rows.Next() {
-			var m uint32
-			var events, mtu uint64
-			if rows.Scan(&m, &events, &mtu) == nil {
-				months = append(months, map[string]any{"month": m, "events": events, "mtu": mtu})
+	var eventLimit int64
+	parallel(
+		func() {
+			rows, err := h.ch.Query(ctx, `
+				SELECT toYYYYMM(event_time) AS m,
+				       count() AS events,
+				       uniqExact(if(user_id != '', user_id, device_id)) AS mtu
+				FROM inspectuser.events
+				WHERE project_id = ?
+				  AND event_time >= toStartOfMonth(now()) - INTERVAL 11 MONTH
+				GROUP BY m ORDER BY m`, projectID)
+			if err != nil {
+				return
 			}
-		}
-	}
+			defer rows.Close()
+			for rows.Next() {
+				var m uint32
+				var events, mtu uint64
+				if rows.Scan(&m, &events, &mtu) == nil {
+					months = append(months, map[string]any{"month": m, "events": events, "mtu": mtu})
+				}
+			}
+		},
+		func() {
+			_ = h.db.QueryRow(ctx, `SELECT event_limit FROM projects WHERE id = $1`, projectID).Scan(&eventLimit)
+		},
+	)
 
 	// Current-month headline = last bucket (or zero if no events yet this month).
 	var curEvents, curMTU uint64
@@ -347,9 +357,6 @@ func (h *QueryHandler) Usage(c fiber.Ctx) error {
 			curMTU = last["mtu"].(uint64)
 		}
 	}
-
-	var eventLimit int64
-	_ = h.db.QueryRow(ctx, `SELECT event_limit FROM projects WHERE id = $1`, projectID).Scan(&eventLimit)
 
 	return c.JSON(fiber.Map{
 		"month":          curMonth,
@@ -364,76 +371,88 @@ func (h *QueryHandler) Overview(c fiber.Ctx) error {
 	projectID := c.Params("id")
 	ctx := c.Context()
 
-	// Headline counters
+	// Four independent reads — run concurrently.
 	var totalEvents, uniqueUsers, eventsToday, eventsLastHour uint64
 	var lastEventTime time.Time
-	_ = h.ch.QueryRow(ctx, `
-		SELECT
-			count(),
-			uniq(user_id),
-			countIf(toDate(event_time) = today()),
-			countIf(event_time >= now() - INTERVAL 1 HOUR),
-			max(event_time)
-		FROM inspectuser.events
-		WHERE project_id = ?
-	`, projectID).Scan(&totalEvents, &uniqueUsers, &eventsToday, &eventsLastHour, &lastEventTime)
-
-	// 30-day event volume time series
 	volume := []map[string]any{}
-	vrows, err := h.ch.Query(ctx, `
-		SELECT toDate(event_time) AS d, count() AS c
-		FROM inspectuser.events
-		WHERE project_id = ? AND event_time >= today() - 29
-		GROUP BY d ORDER BY d ASC
-	`, projectID)
-	if err == nil {
-		defer vrows.Close()
-		for vrows.Next() {
-			var d time.Time
-			var cnt uint64
-			if vrows.Scan(&d, &cnt) == nil {
-				volume = append(volume, map[string]any{"date": d.Format(dateFmt), "value": cnt})
-			}
-		}
-	}
-
-	// Top events
 	topEvents := []map[string]any{}
-	trows, err := h.ch.Query(ctx, `
-		SELECT event_type, count() AS c, uniq(user_id) AS u
-		FROM inspectuser.events
-		WHERE project_id = ?
-		GROUP BY event_type ORDER BY c DESC LIMIT 8
-	`, projectID)
-	if err == nil {
-		defer trows.Close()
-		for trows.Next() {
-			var et string
-			var cnt, usr uint64
-			if trows.Scan(&et, &cnt, &usr) == nil {
-				topEvents = append(topEvents, map[string]any{"event_type": et, "count": cnt, "users": usr})
-			}
-		}
-	}
-
-	// Recent events feed
 	recent := []map[string]any{}
-	rrows, err := h.ch.Query(ctx, `
-		SELECT event_type, user_id, event_time
-		FROM inspectuser.events
-		WHERE project_id = ?
-		ORDER BY event_time DESC LIMIT 12
-	`, projectID)
-	if err == nil {
-		defer rrows.Close()
-		for rrows.Next() {
-			var et, uid string
-			var t time.Time
-			if rrows.Scan(&et, &uid, &t) == nil {
-				recent = append(recent, map[string]any{"event_type": et, "user_id": uid, "event_time": t})
+
+	parallel(
+		// Headline counters
+		func() {
+			_ = h.ch.QueryRow(ctx, `
+				SELECT
+					count(),
+					uniq(user_id),
+					countIf(toDate(event_time) = today()),
+					countIf(event_time >= now() - INTERVAL 1 HOUR),
+					max(event_time)
+				FROM inspectuser.events
+				WHERE project_id = ?
+			`, projectID).Scan(&totalEvents, &uniqueUsers, &eventsToday, &eventsLastHour, &lastEventTime)
+		},
+		// 30-day event volume time series
+		func() {
+			vrows, err := h.ch.Query(ctx, `
+				SELECT toDate(event_time) AS d, count() AS c
+				FROM inspectuser.events
+				WHERE project_id = ? AND event_time >= today() - 29
+				GROUP BY d ORDER BY d ASC
+			`, projectID)
+			if err != nil {
+				return
 			}
-		}
-	}
+			defer vrows.Close()
+			for vrows.Next() {
+				var d time.Time
+				var cnt uint64
+				if vrows.Scan(&d, &cnt) == nil {
+					volume = append(volume, map[string]any{"date": d.Format(dateFmt), "value": cnt})
+				}
+			}
+		},
+		// Top events
+		func() {
+			trows, err := h.ch.Query(ctx, `
+				SELECT event_type, count() AS c, uniq(user_id) AS u
+				FROM inspectuser.events
+				WHERE project_id = ?
+				GROUP BY event_type ORDER BY c DESC LIMIT 8
+			`, projectID)
+			if err != nil {
+				return
+			}
+			defer trows.Close()
+			for trows.Next() {
+				var et string
+				var cnt, usr uint64
+				if trows.Scan(&et, &cnt, &usr) == nil {
+					topEvents = append(topEvents, map[string]any{"event_type": et, "count": cnt, "users": usr})
+				}
+			}
+		},
+		// Recent events feed
+		func() {
+			rrows, err := h.ch.Query(ctx, `
+				SELECT event_type, user_id, event_time
+				FROM inspectuser.events
+				WHERE project_id = ?
+				ORDER BY event_time DESC LIMIT 12
+			`, projectID)
+			if err != nil {
+				return
+			}
+			defer rrows.Close()
+			for rrows.Next() {
+				var et, uid string
+				var t time.Time
+				if rrows.Scan(&et, &uid, &t) == nil {
+					recent = append(recent, map[string]any{"event_type": et, "user_id": uid, "event_time": t})
+				}
+			}
+		},
+	)
 
 	return c.JSON(fiber.Map{
 		"connected":        totalEvents > 0,
