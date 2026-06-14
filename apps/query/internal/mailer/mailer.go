@@ -80,7 +80,9 @@ func InviteEmail(orgName, inviterName, role, acceptURL string) (subject, html st
 	return subject, html
 }
 
-// WelcomeEmail renders an innovative, on-brand welcome email for a new signup.
+// WelcomeEmail renders a polished, on-brand welcome email for a new signup.
+// Table-based + inline styles + system fonts for broad email-client support;
+// uses token replacement (not fmt) so CSS percent signs need no escaping.
 func WelcomeEmail(name, appURL string) (subject, html string) {
 	first := name
 	if i := strings.IndexAny(name, " "); i > 0 {
@@ -92,29 +94,95 @@ func WelcomeEmail(name, appURL string) (subject, html string) {
 	}
 	app := strings.TrimRight(appURL, "/")
 	subject = "Welcome to InspectUser 🎉 — let's find what drives your growth"
-	html = fmt.Sprintf(`<!doctype html><html><body style="margin:0;font-family:'IBM Plex Sans',-apple-system,Arial,sans-serif;background:#F4F5F6;padding:32px;">
-  <div style="max-width:520px;margin:0 auto;background:#fff;border:1px solid #DEDFE2;border-radius:16px;overflow:hidden;">
-    <div style="background:linear-gradient(135deg,#0052F2,#3B82F6);padding:36px 32px;">
-      <div style="font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#BFD3FF;">InspectUser</div>
-      <h1 style="margin:8px 0 0;font-size:26px;line-height:1.25;color:#fff;font-weight:700;">Welcome aboard, %s 👋</h1>
-    </div>
-    <div style="padding:32px;">
-      <p style="font-size:16px;color:#3A3F4B;line-height:1.6;margin:0 0 20px;">
-        You just turned on the lights. InspectUser shows you <strong>what people actually do</strong> on your product — every click, funnel, drop-off and dollar — so you stop guessing and start growing.
-      </p>
-      <p style="font-size:15px;color:#6F7480;line-height:1.6;margin:0 0 12px;font-weight:600;">Your 3-minute head start:</p>
-      <table style="width:100%%;border-collapse:collapse;margin:0 0 28px;">
-        <tr><td style="padding:10px 0;border-bottom:1px solid #EDEFF2;font-size:15px;color:#3A3F4B;">①&nbsp;&nbsp;Drop the snippet on your site (or 1-click Shopify install)</td></tr>
-        <tr><td style="padding:10px 0;border-bottom:1px solid #EDEFF2;font-size:15px;color:#3A3F4B;">②&nbsp;&nbsp;Watch live events &amp; your first session replay roll in</td></tr>
-        <tr><td style="padding:10px 0;font-size:15px;color:#3A3F4B;">③&nbsp;&nbsp;Build a funnel and see exactly where you lose people</td></tr>
+
+	const tpl = `<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="x-apple-disable-message-reformatting">
+<title>Welcome to InspectUser</title>
+</head>
+<body style="margin:0;padding:0;background:#EEF1F5;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#EEF1F5;padding:32px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+<tr><td align="center">
+  <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 1px 4px rgba(16,24,40,.08);">
+
+    <!-- Hero -->
+    <tr><td bgcolor="#0052F2" style="background:#0052F2;background:linear-gradient(135deg,#0052F2 0%,#5B8DEF 100%);padding:40px 40px 36px;">
+      <div style="font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#C7DAFF;margin-bottom:14px;">● INSPECTUSER</div>
+      <h1 style="margin:0;font-size:28px;line-height:1.2;color:#ffffff;font-weight:700;">Welcome aboard, {{HI}} 👋</h1>
+      <p style="margin:12px 0 0;font-size:16px;line-height:1.55;color:#DCE8FF;">You just turned on the lights. See what people actually <em>do</em> on your product — and what drives revenue.</p>
+    </td></tr>
+
+    <!-- Feature grid 2x2 -->
+    <tr><td style="padding:32px 32px 8px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td width="50%" valign="top" style="padding:0 8px 16px 0;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F7F9FC;border:1px solid #EAEEF3;border-radius:12px;"><tr><td style="padding:16px;">
+              <div style="font-size:22px;line-height:1;">🎬</div>
+              <div style="font-size:15px;font-weight:700;color:#101828;margin:8px 0 3px;">Session replay</div>
+              <div style="font-size:13px;line-height:1.45;color:#667085;">Watch real visits like a video.</div>
+            </td></tr></table>
+          </td>
+          <td width="50%" valign="top" style="padding:0 0 16px 8px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F7F9FC;border:1px solid #EAEEF3;border-radius:12px;"><tr><td style="padding:16px;">
+              <div style="font-size:22px;line-height:1;">🔻</div>
+              <div style="font-size:15px;font-weight:700;color:#101828;margin:8px 0 3px;">Funnels</div>
+              <div style="font-size:13px;line-height:1.45;color:#667085;">See exactly where users drop off.</div>
+            </td></tr></table>
+          </td>
+        </tr>
+        <tr>
+          <td width="50%" valign="top" style="padding:0 8px 0 0;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F7F9FC;border:1px solid #EAEEF3;border-radius:12px;"><tr><td style="padding:16px;">
+              <div style="font-size:22px;line-height:1;">🔥</div>
+              <div style="font-size:15px;font-weight:700;color:#101828;margin:8px 0 3px;">Heatmaps</div>
+              <div style="font-size:13px;line-height:1.45;color:#667085;">Where attention &amp; clicks land.</div>
+            </td></tr></table>
+          </td>
+          <td width="50%" valign="top" style="padding:0 0 0 8px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F7F9FC;border:1px solid #EAEEF3;border-radius:12px;"><tr><td style="padding:16px;">
+              <div style="font-size:22px;line-height:1;">💸</div>
+              <div style="font-size:15px;font-weight:700;color:#101828;margin:8px 0 3px;">Revenue attribution</div>
+              <div style="font-size:13px;line-height:1.45;color:#667085;">Tie money to behavior &amp; source.</div>
+            </td></tr></table>
+          </td>
+        </tr>
       </table>
-      <a href="%s/overview" style="display:inline-block;background:#0052F2;color:#fff;text-decoration:none;font-size:15px;font-weight:600;padding:13px 28px;border-radius:10px;">Open your dashboard →</a>
-      <p style="font-size:13px;color:#8A8E99;margin:28px 0 0;line-height:1.6;">
-        Need a hand getting set up? Just reply to this email — a real person reads it.<br>Happy building 🚀
-      </p>
-    </div>
-  </div>
-</body></html>`, hi, app)
+    </td></tr>
+
+    <!-- Quickstart -->
+    <tr><td style="padding:18px 32px 0;">
+      <div style="font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#98A2B3;margin-bottom:6px;">Your 3-minute head start</div>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:15px;color:#344054;line-height:1.5;">
+        <tr><td style="padding:9px 0;border-bottom:1px solid #F0F2F5;"><span style="color:#0052F2;font-weight:700;">1.</span>&nbsp;&nbsp;Add the snippet (or 1-click Shopify install)</td></tr>
+        <tr><td style="padding:9px 0;border-bottom:1px solid #F0F2F5;"><span style="color:#0052F2;font-weight:700;">2.</span>&nbsp;&nbsp;Watch live events &amp; your first replay roll in</td></tr>
+        <tr><td style="padding:9px 0;"><span style="color:#0052F2;font-weight:700;">3.</span>&nbsp;&nbsp;Build a funnel and find your biggest leak</td></tr>
+      </table>
+    </td></tr>
+
+    <!-- CTA -->
+    <tr><td align="center" style="padding:28px 32px 36px;">
+      <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+        <td align="center" bgcolor="#0052F2" style="border-radius:10px;">
+          <a href="{{APP}}/overview" style="display:inline-block;padding:14px 40px;font-size:16px;font-weight:600;color:#ffffff;text-decoration:none;">Open your dashboard →</a>
+        </td>
+      </tr></table>
+      <p style="margin:18px 0 0;font-size:13px;color:#98A2B3;">Stuck? Just reply — a real person reads every email.</p>
+    </td></tr>
+
+    <!-- Footer -->
+    <tr><td style="padding:20px 32px;background:#F7F9FC;border-top:1px solid #EAEEF3;">
+      <p style="margin:0;font-size:12px;line-height:1.5;color:#98A2B3;">InspectUser — product analytics, session replay &amp; revenue attribution.<br>You're receiving this because you created an account.</p>
+    </td></tr>
+
+  </table>
+</td></tr>
+</table>
+</body></html>`
+
+	html = strings.NewReplacer("{{HI}}", hi, "{{APP}}", app).Replace(tpl)
 	return subject, html
 }
 
