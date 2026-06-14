@@ -1,19 +1,28 @@
 import type { Metadata } from 'next'
-import { IBM_Plex_Sans, IBM_Plex_Mono } from 'next/font/google'
+import localFont from 'next/font/local'
 import './globals.css'
 import { Providers } from '@/components/layout/Providers'
 import { brand } from '@/config/brand'
 
-const ibmPlexSans = IBM_Plex_Sans({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
+// Self-hosted IBM Plex (woff2 in ./fonts) instead of next/font/google. The
+// Google loader fetches fonts at BUILD time, which intermittently failed the
+// server-side build (flaky deploys). Local files build offline and reliably.
+const ibmPlexSans = localFont({
+  src: [
+    { path: './fonts/ibm-plex-sans-400.woff2', weight: '400', style: 'normal' },
+    { path: './fonts/ibm-plex-sans-500.woff2', weight: '500', style: 'normal' },
+    { path: './fonts/ibm-plex-sans-600.woff2', weight: '600', style: 'normal' },
+    { path: './fonts/ibm-plex-sans-700.woff2', weight: '700', style: 'normal' },
+  ],
   variable: '--font-inter-tight',
   display: 'swap',
 })
 
-const ibmPlexMono = IBM_Plex_Mono({
-  subsets: ['latin'],
-  weight: ['400', '500'],
+const ibmPlexMono = localFont({
+  src: [
+    { path: './fonts/ibm-plex-mono-400.woff2', weight: '400', style: 'normal' },
+    { path: './fonts/ibm-plex-mono-500.woff2', weight: '500', style: 'normal' },
+  ],
   variable: '--font-jetbrains-mono',
   display: 'swap',
 })
