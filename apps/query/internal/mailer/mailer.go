@@ -102,79 +102,103 @@ func WelcomeEmail(name, appURL string) (subject, html string) {
 <meta name="x-apple-disable-message-reformatting">
 <title>Welcome to InspectUser</title>
 </head>
-<body style="margin:0;padding:0;background:#EEF1F5;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#EEF1F5;padding:32px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+<body style="margin:0;padding:0;background:#F2F4F7;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F2F4F7;padding:32px 16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
 <tr><td align="center">
-  <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 1px 4px rgba(16,24,40,.08);">
+  <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:18px;overflow:hidden;border:1px solid #E7EAEE;">
 
-    <!-- Hero -->
-    <tr><td bgcolor="#0052F2" style="background:#0052F2;background:linear-gradient(135deg,#0052F2 0%,#5B8DEF 100%);padding:40px 40px 36px;">
-      <div style="font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#C7DAFF;margin-bottom:14px;">● INSPECTUSER</div>
-      <h1 style="margin:0;font-size:28px;line-height:1.2;color:#ffffff;font-weight:700;">Welcome aboard, {{HI}} 👋</h1>
-      <p style="margin:12px 0 0;font-size:16px;line-height:1.55;color:#DCE8FF;">You just turned on the lights. See what people actually <em>do</em> on your product — and what drives revenue.</p>
+    <!-- Brand bar -->
+    <tr><td style="padding:22px 40px;border-bottom:1px solid #F0F2F5;">
+      <span style="font-size:17px;font-weight:700;color:#0052F2;letter-spacing:-.01em;">◆ InspectUser</span>
     </td></tr>
 
-    <!-- Feature grid 2x2 -->
-    <tr><td style="padding:32px 32px 8px;">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-        <tr>
-          <td width="50%" valign="top" style="padding:0 8px 16px 0;">
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F7F9FC;border:1px solid #EAEEF3;border-radius:12px;"><tr><td style="padding:16px;">
-              <div style="font-size:22px;line-height:1;">🎬</div>
-              <div style="font-size:15px;font-weight:700;color:#101828;margin:8px 0 3px;">Session replay</div>
-              <div style="font-size:13px;line-height:1.45;color:#667085;">Watch real visits like a video.</div>
-            </td></tr></table>
-          </td>
-          <td width="50%" valign="top" style="padding:0 0 16px 8px;">
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F7F9FC;border:1px solid #EAEEF3;border-radius:12px;"><tr><td style="padding:16px;">
-              <div style="font-size:22px;line-height:1;">🔻</div>
-              <div style="font-size:15px;font-weight:700;color:#101828;margin:8px 0 3px;">Funnels</div>
-              <div style="font-size:13px;line-height:1.45;color:#667085;">See exactly where users drop off.</div>
-            </td></tr></table>
-          </td>
-        </tr>
-        <tr>
-          <td width="50%" valign="top" style="padding:0 8px 0 0;">
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F7F9FC;border:1px solid #EAEEF3;border-radius:12px;"><tr><td style="padding:16px;">
-              <div style="font-size:22px;line-height:1;">🔥</div>
-              <div style="font-size:15px;font-weight:700;color:#101828;margin:8px 0 3px;">Heatmaps</div>
-              <div style="font-size:13px;line-height:1.45;color:#667085;">Where attention &amp; clicks land.</div>
-            </td></tr></table>
-          </td>
-          <td width="50%" valign="top" style="padding:0 0 0 8px;">
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F7F9FC;border:1px solid #EAEEF3;border-radius:12px;"><tr><td style="padding:16px;">
-              <div style="font-size:22px;line-height:1;">💸</div>
-              <div style="font-size:15px;font-weight:700;color:#101828;margin:8px 0 3px;">Revenue attribution</div>
-              <div style="font-size:13px;line-height:1.45;color:#667085;">Tie money to behavior &amp; source.</div>
-            </td></tr></table>
-          </td>
-        </tr>
-      </table>
-    </td></tr>
-
-    <!-- Quickstart -->
-    <tr><td style="padding:18px 32px 0;">
-      <div style="font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#98A2B3;margin-bottom:6px;">Your 3-minute head start</div>
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:15px;color:#344054;line-height:1.5;">
-        <tr><td style="padding:9px 0;border-bottom:1px solid #F0F2F5;"><span style="color:#0052F2;font-weight:700;">1.</span>&nbsp;&nbsp;Add the snippet (or 1-click Shopify install)</td></tr>
-        <tr><td style="padding:9px 0;border-bottom:1px solid #F0F2F5;"><span style="color:#0052F2;font-weight:700;">2.</span>&nbsp;&nbsp;Watch live events &amp; your first replay roll in</td></tr>
-        <tr><td style="padding:9px 0;"><span style="color:#0052F2;font-weight:700;">3.</span>&nbsp;&nbsp;Build a funnel and find your biggest leak</td></tr>
-      </table>
-    </td></tr>
-
-    <!-- CTA -->
-    <tr><td align="center" style="padding:28px 32px 36px;">
-      <table role="presentation" cellpadding="0" cellspacing="0"><tr>
-        <td align="center" bgcolor="#0052F2" style="border-radius:10px;">
-          <a href="{{APP}}/overview" style="display:inline-block;padding:14px 40px;font-size:16px;font-weight:600;color:#ffffff;text-decoration:none;">Open your dashboard →</a>
+    <!-- Hero (clean, centered, landing-page style) -->
+    <tr><td align="center" style="padding:48px 40px 8px;">
+      <div style="font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#0052F2;margin-bottom:16px;">Welcome aboard</div>
+      <h1 style="margin:0;font-size:34px;line-height:1.18;color:#0B1220;font-weight:800;letter-spacing:-.02em;">Hi {{HI}}, let's find<br>what drives your growth.</h1>
+      <p style="margin:18px auto 0;max-width:440px;font-size:17px;line-height:1.6;color:#5A6473;">Stop guessing. See what people actually do on your product — every click, funnel, drop-off and dollar — in one clean platform.</p>
+      <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:28px auto 0;"><tr>
+        <td align="center" bgcolor="#0052F2" style="border-radius:12px;">
+          <a href="{{APP}}/overview" style="display:inline-block;padding:15px 42px;font-size:16px;font-weight:600;color:#ffffff;text-decoration:none;">Open your dashboard →</a>
         </td>
       </tr></table>
-      <p style="margin:18px 0 0;font-size:13px;color:#98A2B3;">Stuck? Just reply — a real person reads every email.</p>
+    </td></tr>
+
+    <!-- Divider -->
+    <tr><td style="padding:44px 40px 0;"><div style="border-top:1px solid #EEF1F4;"></div></td></tr>
+
+    <!-- Features (full-width clean rows) -->
+    <tr><td style="padding:32px 40px 8px;">
+      <div style="font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#98A2B3;margin-bottom:4px;">Everything in one place</div>
+      <h2 style="margin:0 0 20px;font-size:21px;font-weight:700;color:#0B1220;letter-spacing:-.01em;">No more stitching tools together</h2>
+
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td width="52" valign="top" style="padding:0 0 22px;"><div style="width:44px;height:44px;background:#EEF4FF;border-radius:11px;text-align:center;line-height:44px;font-size:20px;">🎬</div></td>
+          <td valign="top" style="padding:0 0 22px 14px;">
+            <div style="font-size:16px;font-weight:700;color:#0B1220;">Session replay</div>
+            <div style="font-size:14px;line-height:1.55;color:#667085;margin-top:2px;">Watch real visits like a video — clicks, scrolls, rage-clicks. Inputs masked for privacy.</div>
+          </td>
+        </tr>
+        <tr>
+          <td width="52" valign="top" style="padding:0 0 22px;"><div style="width:44px;height:44px;background:#EEF4FF;border-radius:11px;text-align:center;line-height:44px;font-size:20px;">🔻</div></td>
+          <td valign="top" style="padding:0 0 22px 14px;">
+            <div style="font-size:16px;font-weight:700;color:#0B1220;">Funnels &amp; retention</div>
+            <div style="font-size:14px;line-height:1.55;color:#667085;margin-top:2px;">See exactly where users drop off, and which behaviors bring them back.</div>
+          </td>
+        </tr>
+        <tr>
+          <td width="52" valign="top" style="padding:0 0 22px;"><div style="width:44px;height:44px;background:#EEF4FF;border-radius:11px;text-align:center;line-height:44px;font-size:20px;">🔥</div></td>
+          <td valign="top" style="padding:0 0 22px 14px;">
+            <div style="font-size:16px;font-weight:700;color:#0B1220;">Heatmaps</div>
+            <div style="font-size:14px;line-height:1.55;color:#667085;margin-top:2px;">See where attention and clicks land — and what visitors ignore.</div>
+          </td>
+        </tr>
+        <tr>
+          <td width="52" valign="top"><div style="width:44px;height:44px;background:#EEF4FF;border-radius:11px;text-align:center;line-height:44px;font-size:20px;">💸</div></td>
+          <td valign="top" style="padding:0 0 0 14px;">
+            <div style="font-size:16px;font-weight:700;color:#0B1220;">Revenue attribution</div>
+            <div style="font-size:14px;line-height:1.55;color:#667085;margin-top:2px;">Tie revenue to behavior and source — know which channel actually pays.</div>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+
+    <!-- Steps band -->
+    <tr><td style="padding:12px 40px 0;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F7F9FC;border:1px solid #EEF1F4;border-radius:14px;"><tr><td style="padding:24px 24px 8px;">
+        <div style="font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#98A2B3;margin-bottom:14px;">Get started in 3 steps</div>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+          <tr><td width="34" valign="top" style="padding:0 0 16px;"><div style="width:26px;height:26px;background:#0052F2;border-radius:50%;color:#fff;text-align:center;line-height:26px;font-size:13px;font-weight:700;">1</div></td>
+              <td valign="top" style="padding:0 0 16px 4px;font-size:15px;line-height:1.5;color:#344054;">Add the snippet to your site — or 1-click install on Shopify.</td></tr>
+          <tr><td width="34" valign="top" style="padding:0 0 16px;"><div style="width:26px;height:26px;background:#0052F2;border-radius:50%;color:#fff;text-align:center;line-height:26px;font-size:13px;font-weight:700;">2</div></td>
+              <td valign="top" style="padding:0 0 16px 4px;font-size:15px;line-height:1.5;color:#344054;">Watch live events and your first session replay roll in.</td></tr>
+          <tr><td width="34" valign="top"><div style="width:26px;height:26px;background:#0052F2;border-radius:50%;color:#fff;text-align:center;line-height:26px;font-size:13px;font-weight:700;">3</div></td>
+              <td valign="top" style="padding:0 0 0 4px;font-size:15px;line-height:1.5;color:#344054;">Build a funnel and find your biggest leak.</td></tr>
+        </table>
+      </td></tr></table>
+    </td></tr>
+
+    <!-- Final CTA -->
+    <tr><td align="center" style="padding:32px 40px 8px;">
+      <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+        <td align="center" bgcolor="#0052F2" style="border-radius:12px;">
+          <a href="{{APP}}/overview" style="display:inline-block;padding:15px 42px;font-size:16px;font-weight:600;color:#ffffff;text-decoration:none;">Go to your dashboard →</a>
+        </td>
+      </tr></table>
+      <p style="margin:16px 0 0;font-size:14px;color:#98A2B3;">Stuck on setup? Just reply — a real person reads every email.</p>
     </td></tr>
 
     <!-- Footer -->
-    <tr><td style="padding:20px 32px;background:#F7F9FC;border-top:1px solid #EAEEF3;">
-      <p style="margin:0;font-size:12px;line-height:1.5;color:#98A2B3;">InspectUser — product analytics, session replay &amp; revenue attribution.<br>You're receiving this because you created an account.</p>
+    <tr><td style="padding:32px 40px;margin-top:24px;background:#0B1220;">
+      <div style="font-size:16px;font-weight:700;color:#ffffff;margin-bottom:12px;">◆ InspectUser</div>
+      <div style="font-size:13px;line-height:1.7;">
+        <a href="{{APP}}/features" style="color:#AEB6C2;text-decoration:none;">Features</a>&nbsp;&nbsp;·&nbsp;&nbsp;
+        <a href="{{APP}}/pricing" style="color:#AEB6C2;text-decoration:none;">Pricing</a>&nbsp;&nbsp;·&nbsp;&nbsp;
+        <a href="{{APP}}/docs" style="color:#AEB6C2;text-decoration:none;">Docs</a>&nbsp;&nbsp;·&nbsp;&nbsp;
+        <a href="{{APP}}/security" style="color:#AEB6C2;text-decoration:none;">Security</a>
+      </div>
+      <p style="margin:16px 0 0;font-size:12px;line-height:1.5;color:#6B7484;">Product analytics, session replay &amp; revenue attribution.<br>You're receiving this because you created an InspectUser account.</p>
     </td></tr>
 
   </table>
