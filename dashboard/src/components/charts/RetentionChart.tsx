@@ -35,7 +35,8 @@ export function RetentionChart({ data, unit = 'Day' }: Props) {
   const curve = Array.from({ length: maxPeriods }, (_, i) => {
     let num = 0, den = 0
     for (const r of data) {
-      if (i < r.periods.length) { num += r.cohort_size * r.periods[i]; den += r.cohort_size }
+      // Skip future/not-yet-elapsed periods (value < 0) so they don't drag the average to 0.
+      if (i < r.periods.length && r.periods[i] >= 0) { num += r.cohort_size * r.periods[i]; den += r.cohort_size }
     }
     return { period: `${unit} ${i}`, value: den ? (num / den) * 100 : 0 }
   })
@@ -77,9 +78,14 @@ export function RetentionChart({ data, unit = 'Day' }: Props) {
                 <td className="py-2 pr-4 text-right type-body-13 text-[#64748b]">{row.cohort_size.toLocaleString()}</td>
                 {row.periods.map((val, i) => (
                   <td key={i} className="py-2 px-1">
-                    <div className={`rounded-lg px-1 py-1 text-center type-caption ${pctColor(val)}`}>
-                      {(val * 100).toFixed(0)}%
-                    </div>
+                    {val < 0 ? (
+                      // Period hasn't elapsed yet — no data, not 0%.
+                      <div className="rounded-lg px-1 py-1 text-center type-caption text-[#cbd5e1]">—</div>
+                    ) : (
+                      <div className={`rounded-lg px-1 py-1 text-center type-caption ${pctColor(val)}`}>
+                        {(val * 100).toFixed(0)}%
+                      </div>
+                    )}
                   </td>
                 ))}
               </tr>

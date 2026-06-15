@@ -27,6 +27,24 @@ type RetentionRow struct {
 	CohortSize int64     `json:"cohort_size"`
 }
 
+// elapsedPeriods returns how many whole periods (in the given unit) have passed
+// between a cohort's start date and now. Period p is "complete enough to show"
+// when p <= elapsed; later periods are still in the future.
+func elapsedPeriods(cohortDate, unit string, now time.Time) int {
+	t, err := time.Parse("2006-01-02", cohortDate)
+	if err != nil {
+		return 1 << 30 // unparseable → don't mask anything
+	}
+	switch unit {
+	case "week":
+		return int(now.Sub(t).Hours() / (24 * 7))
+	case "month":
+		return (now.Year()-t.Year())*12 + int(now.Month()) - int(t.Month())
+	default: // day
+		return int(now.Sub(t).Hours() / 24)
+	}
+}
+
 func Retention(ctx context.Context, conn clickhouse.Conn, q RetentionQuery) ([]RetentionRow, error) {
 	// N-day retention. Two flat queries, pivoted into the period grid in Go —
 	// avoids ClickHouse array-lambda + aggregate scoping pitfalls.
@@ -150,11 +168,20 @@ func Retention(ctx context.Context, conn clickhouse.Conn, q RetentionQuery) ([]R
 			}
 		}
 	}
+	// Periods that haven't elapsed yet for a cohort are NOT zero retention —
+	// they have no data. Mark them -1 so the UI renders them blank instead of
+	// "0%" (which made recent cohorts look like they cratered).
+	now := time.Now().UTC()
 	for date, a := range acc {
 		if a.size == 0 {
 			continue
 		}
+		elapsed := elapsedPeriods(date, unit, now)
 		for p := 0; p < q.Periods; p++ {
+			if p > elapsed {
+				a.periods[p] = -1 // future period — no data yet
+				continue
+			}
 			a.periods[p] = float64(retained[date][p]) / float64(a.size)
 		}
 	}
