@@ -58,7 +58,7 @@ func (h *ProductHandler) WebGoals(c fiber.Ctx) error {
 		// Goal predicate: an event_type, or a Page Viewed on a specific path.
 		cond := "event_type = '" + sqlStrip(g.match) + "'"
 		if g.gtype == "page" {
-			cond = "event_type = 'Page Viewed' AND JSONExtractString(properties, 'path') = '" + sqlStrip(g.match) + "'"
+			cond = "event_type = 'Page Viewed' AND p_path = '" + sqlStrip(g.match) + "'"
 		}
 		fns = append(fns, func() {
 			_ = h.ch.QueryRow(ctx, `

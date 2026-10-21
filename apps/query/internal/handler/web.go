@@ -37,16 +37,16 @@ func webFilter(c fiber.Ctx) string {
 		}
 	}
 	if v := c.Query("path"); v != "" {
-		b.WriteString(" AND JSONExtractString(properties, 'path') = '" + sqlStrip(v) + "'")
+		b.WriteString(" AND p_path = '" + sqlStrip(v) + "'")
 	}
 	if v := c.Query("hostname"); v != "" {
-		b.WriteString(" AND JSONExtractString(properties, 'domain') = '" + sqlStrip(v) + "'")
+		b.WriteString(" AND p_domain = '" + sqlStrip(v) + "'")
 	}
 	if v := c.Query("source"); v != "" {
 		if v == "Direct" {
-			b.WriteString(" AND (JSONExtractString(properties,'referrer') = '' OR domain(JSONExtractString(properties,'referrer')) = JSONExtractString(properties,'domain'))")
+			b.WriteString(" AND (p_referrer = '' OR domain(p_referrer) = p_domain)")
 		} else {
-			b.WriteString(" AND domain(JSONExtractString(properties,'referrer')) = '" + sqlStrip(v) + "'")
+			b.WriteString(" AND domain(p_referrer) = '" + sqlStrip(v) + "'")
 		}
 	}
 	return b.String()
@@ -137,7 +137,7 @@ func (h *ProductHandler) WebAnalytics(c fiber.Ctx) error {
 	run(func() {
 		_ = h.ch.QueryRow(ctx, `
 			SELECT ifNull(avg(sess_ms), 0) FROM (
-				SELECT session_id, sum(JSONExtractInt(properties,'engaged_ms')) AS sess_ms
+				SELECT session_id, sum(p_engaged_ms) AS sess_ms
 				FROM inspectuser.events
 				WHERE project_id = ? AND event_type = 'Page Engagement' AND session_id != ''
 				  AND event_time >= toDate('`+since+`')`+flt+`
@@ -259,7 +259,7 @@ func (h *ProductHandler) topPages(ctx context.Context, projectID, since, flt str
 	out := []map[string]any{}
 	rows, err := h.ch.Query(ctx, `
 		SELECT path, count() AS views, uniq(id) AS visitors FROM (
-			SELECT JSONExtractString(properties, 'path') AS path, `+identityExpr+` AS id
+			SELECT p_path AS path, `+identityExpr+` AS id
 			FROM inspectuser.events
 			WHERE project_id = ? AND event_type = 'Page Viewed' AND event_time >= toDate('`+since+`')`+flt+`
 		)
@@ -287,7 +287,7 @@ func (h *ProductHandler) sessionEdgePages(ctx context.Context, projectID, since,
 	out := []map[string]any{}
 	rows, err := h.ch.Query(ctx, `
 		SELECT path, count() AS sessions FROM (
-			SELECT session_id, `+agg+`(JSONExtractString(properties, 'path'), event_time) AS path
+			SELECT session_id, `+agg+`(p_path, event_time) AS path
 			FROM inspectuser.events
 			WHERE project_id = ? AND event_type = 'Page Viewed' AND session_id != '' AND event_time >= toDate('`+since+`')`+flt+`
 			GROUP BY session_id
@@ -327,8 +327,8 @@ func (h *ProductHandler) topReferrers(ctx context.Context, projectID, since, flt
 			FROM (
 				SELECT session_id,
 				       argMinIf(utm_source, event_time, utm_source != '') AS entry_utm,
-				       argMin(JSONExtractString(properties, 'referrer'), event_time) AS entry_ref,
-				       argMin(JSONExtractString(properties, 'domain'),   event_time) AS entry_dom
+				       argMin(p_referrer, event_time) AS entry_ref,
+				       argMin(p_domain,   event_time) AS entry_dom
 				FROM inspectuser.events
 				WHERE project_id = ? AND event_type = 'Page Viewed' AND session_id != '' AND event_time >= toDate('`+since+`')`+flt+`
 				GROUP BY session_id

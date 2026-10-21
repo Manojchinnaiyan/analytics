@@ -11,6 +11,7 @@ import (
 	"github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/inspectuser/query/config"
 	"github.com/inspectuser/query/internal/alerts"
+	"github.com/inspectuser/query/internal/analytics"
 	"github.com/inspectuser/query/internal/handler"
 	"github.com/inspectuser/query/internal/mailer"
 	"github.com/inspectuser/query/internal/middleware"
@@ -514,6 +515,20 @@ func main() {
 	`); err != nil {
 		log.Warn("could not ensure session_replays table", zap.Error(err))
 	}
+	// Hourly events rollup (fast path for segmentation). Created on first boot and
+	// backfilled in the background; the materialized view keeps it current after.
+	rctx, rcancel := context.WithTimeout(context.Background(), time.Minute)
+	// Events table optimizations (materialized JSON columns, skip indexes, codecs).
+	if err := analytics.EnsureEventSchema(rctx, chConn); err != nil {
+		log.Warn("could not apply events schema optimizations", zap.Error(err))
+	}
+	if err := analytics.EnsureRollups(rctx, chConn, func(err error) {
+		log.Error("hourly rollup backfill failed; segmentation stays on raw events", zap.Error(err))
+	}); err != nil {
+		log.Warn("could not ensure hourly rollup; segmentation will use raw events", zap.Error(err))
+	}
+	rcancel()
+
 	replayStore := replay.New(chConn, cfg.R2Endpoint, cfg.R2AccessKey, cfg.R2SecretKey, cfg.R2Bucket, log)
 	replayHandler := handler.NewReplayHandler(replayStore, rdb, log)
 	app.Post("/replay", replayHandler.Ingest) // api-key auth, outside the /v1 JWT prefix

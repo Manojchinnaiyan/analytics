@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/ClickHouse/clickhouse-go/v2"
+	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 )
 
 type SegmentationQuery struct {
@@ -126,12 +127,18 @@ func Segmentation(ctx context.Context, conn clickhouse.Conn, q SegmentationQuery
 		groupByClause(q.GroupBy),
 	)
 
-	rows, err := conn.Query(ctx, sql,
-		q.ProjectID,
-		q.EventType,
-		q.StartDate,
-		q.EndDate,
-	)
+	args := []any{q.ProjectID, q.EventType, q.StartDate, q.EndDate}
+
+	// Fast path: plain counts/uniques read the hourly rollup instead of raw
+	// events. Falls back to raw if the rollup isn't there (e.g. boot failed).
+	var rows driver.Rows
+	var err error
+	if canUseRollup(q) {
+		rows, err = conn.Query(ctx, rollupSQL(q), args...)
+	}
+	if rows == nil || err != nil {
+		rows, err = conn.Query(ctx, sql, args...)
+	}
 	if err != nil {
 		return nil, err
 	}

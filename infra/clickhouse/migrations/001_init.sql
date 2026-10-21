@@ -79,16 +79,6 @@ ENGINE = ReplacingMergeTree(updated_at)
 ORDER BY (project_id, user_id, session_id)
 SETTINGS index_granularity = 8192;
 
--- Materialized view: daily event counts per project (speeds up segmentation)
-CREATE MATERIALIZED VIEW IF NOT EXISTS inspectuser.mv_daily_event_counts
-ENGINE = SummingMergeTree()
-ORDER BY (project_id, event_type, date)
-AS
-SELECT
-    project_id,
-    event_type,
-    toDate(event_time) AS date,
-    count()            AS event_count,
-    uniq(user_id)      AS unique_users
-FROM inspectuser.events
-GROUP BY project_id, event_type, date;
+-- Applied by the query service on boot (so existing deployments get them too):
+--   * events_hourly rollup + mv_events_hourly      → apps/query/internal/analytics/rollup.go
+--   * materialized p_* columns, skip indexes, codecs → apps/query/internal/analytics/schema.go

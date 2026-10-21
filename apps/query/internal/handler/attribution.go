@@ -61,7 +61,7 @@ func (h *AttributionHandler) Attribution(c fiber.Ctx) error {
 	// source (e.g. the same visitor's X click after a WhatsApp click) surfaces under
 	// last-touch instead of being hidden behind a referrer-only touch. Internal
 	// navigation (own-domain referrer) never counts as a referrer touch.
-	const extRef = `referrer != '' AND domain(referrer) != JSONExtractString(properties,'domain')`
+	const extRef = `referrer != '' AND domain(referrer) != p_domain`
 
 	rows, err := h.ch.Query(c.Context(), fmt.Sprintf(`
 		SELECT
@@ -144,7 +144,7 @@ func (h *AttributionHandler) multiTouch(c fiber.Ctx, projectID, conversion, mode
 		       toUInt8(event_type = ?) AS is_conv
 		FROM inspectuser.events
 		WHERE project_id = ?
-		  AND (utm_source != '' OR utm_medium != '' OR (referrer != '' AND domain(referrer) != JSONExtractString(properties,'domain')) OR event_type = ?)
+		  AND (utm_source != '' OR utm_medium != '' OR (referrer != '' AND domain(referrer) != p_domain) OR event_type = ?)
 		ORDER BY id, t
 	`, conversion, projectID, conversion)
 	if err != nil {

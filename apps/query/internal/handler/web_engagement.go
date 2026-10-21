@@ -65,7 +65,7 @@ func (h *ProductHandler) WebEngagement(c fiber.Ctx) error {
 		func() {
 			if rows, err := h.ch.Query(ctx, `
 				SELECT domain, count() AS clicks, uniq(id) AS visitors FROM (
-					SELECT JSONExtractString(properties,'domain') AS domain, `+identityExpr+` AS id
+					SELECT p_domain AS domain, `+identityExpr+` AS id
 					FROM inspectuser.events WHERE `+win+` AND event_type = 'Outbound Link Clicked'
 				)
 				GROUP BY domain ORDER BY clicks DESC LIMIT 12
@@ -102,7 +102,7 @@ func (h *ProductHandler) WebEngagement(c fiber.Ctx) error {
 		func() {
 			if rows, err := h.ch.Query(ctx, `
 				SELECT path, count() AS views, avg(ms) AS avg_ms FROM (
-					SELECT JSONExtractString(properties,'path') AS path, JSONExtractInt(properties,'engaged_ms') AS ms
+					SELECT p_path AS path, p_engaged_ms AS ms
 					FROM inspectuser.events WHERE `+win+` AND event_type = 'Page Engagement'
 				)
 				GROUP BY path ORDER BY views DESC LIMIT 12
@@ -127,10 +127,10 @@ func (h *ProductHandler) WebEngagement(c fiber.Ctx) error {
 		func() {
 			_ = h.ch.QueryRow(ctx, `
 				SELECT
-					uniqIf(`+identityExpr+`, JSONExtractInt(properties,'depth') >= 25)  AS d25,
-					uniqIf(`+identityExpr+`, JSONExtractInt(properties,'depth') >= 50)  AS d50,
-					uniqIf(`+identityExpr+`, JSONExtractInt(properties,'depth') >= 75)  AS d75,
-					uniqIf(`+identityExpr+`, JSONExtractInt(properties,'depth') >= 100) AS d100
+					uniqIf(`+identityExpr+`, p_depth >= 25)  AS d25,
+					uniqIf(`+identityExpr+`, p_depth >= 50)  AS d50,
+					uniqIf(`+identityExpr+`, p_depth >= 75)  AS d75,
+					uniqIf(`+identityExpr+`, p_depth >= 100) AS d100
 				FROM inspectuser.events WHERE `+win+` AND event_type = 'Scroll Depth'
 			`, projectID).Scan(&d25, &d50, &d75, &d100)
 		},

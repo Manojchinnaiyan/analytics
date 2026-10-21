@@ -55,7 +55,7 @@ func (h *ProductHandler) WebVitals(c fiber.Ctx) error {
 			// Per-page p75 (top pages by sample volume).
 			if rows, err := h.ch.Query(ctx, `
 				SELECT path, samples, lcp, cls, fcp, inp FROM (
-					SELECT JSONExtractString(properties,'path') AS path, count() AS samples,
+					SELECT p_path AS path, count() AS samples,
 						quantileIf(0.75)(JSONExtractFloat(properties,'lcp_ms'), JSONHas(properties,'lcp_ms')) AS lcp,
 						quantileIf(0.75)(JSONExtractFloat(properties,'cls'),    JSONHas(properties,'cls'))    AS cls,
 						quantileIf(0.75)(JSONExtractFloat(properties,'fcp_ms'), JSONHas(properties,'fcp_ms')) AS fcp,

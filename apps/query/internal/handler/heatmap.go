@@ -55,7 +55,7 @@ func (h *HeatmapHandler) Heatmap(c fiber.Ctx) error {
 	// Pages that actually have click data, most-clicked first — populates the picker.
 	paths := []string{}
 	if rows, err := h.ch.Query(ctx, `
-		SELECT JSONExtractString(properties, 'path') AS path, count() AS c
+		SELECT p_path AS path, count() AS c
 		FROM inspectuser.events
 		WHERE project_id = ? AND event_type = 'Element Clicked' AND event_time >= toDate('`+since+`')
 		GROUP BY path HAVING path != '' ORDER BY c DESC LIMIT 50
@@ -95,7 +95,7 @@ func (h *HeatmapHandler) Heatmap(c fiber.Ctx) error {
 			SELECT `+rxExpr+` AS rx, `+yExpr+` AS yv
 			FROM inspectuser.events
 			WHERE project_id = ? AND event_type = 'Element Clicked'
-			  AND JSONExtractString(properties, 'path') = '`+safePath+`'
+			  AND p_path = '`+safePath+`'
 			  AND event_time >= toDate('`+since+`')
 		)
 		WHERE rx >= 0 AND rx <= 1 AND yv >= 0 AND yv < 30000
@@ -120,17 +120,17 @@ func (h *HeatmapHandler) Heatmap(c fiber.Ctx) error {
 			uniqIf(if(user_id != '', user_id, device_id), event_type = 'Page Viewed') AS viewers
 		FROM inspectuser.events
 		WHERE project_id = ? AND event_type IN ('Element Clicked', 'Page Viewed')
-		  AND JSONExtractString(properties, 'path') = '`+safePath+`' AND event_time >= toDate('`+since+`')
+		  AND p_path = '`+safePath+`' AND event_time >= toDate('`+since+`')
 	`, projectID).Scan(&totalClicks, &pageviews)
 
 	// Scroll reach: % of this page's viewers who reached each depth milestone.
 	scroll := []scrollReach{}
 	depthUsers := map[int]uint64{}
 	if rows, err := h.ch.Query(ctx, `
-		SELECT JSONExtractInt(properties, 'depth') AS d, uniq(if(user_id != '', user_id, device_id)) AS u
+		SELECT p_depth AS d, uniq(if(user_id != '', user_id, device_id)) AS u
 		FROM inspectuser.events
 		WHERE project_id = ? AND event_type = 'Scroll Depth'
-		  AND JSONExtractString(properties, 'path') = '`+safePath+`' AND event_time >= toDate('`+since+`')
+		  AND p_path = '`+safePath+`' AND event_time >= toDate('`+since+`')
 		GROUP BY d
 	`, projectID); err == nil {
 		defer rows.Close()
@@ -163,7 +163,7 @@ func (h *HeatmapHandler) Heatmap(c fiber.Ctx) error {
 		SELECT if(JSONExtractString(properties,'text') != '', JSONExtractString(properties,'text'), JSONExtractString(properties,'tag')) AS label, count() AS c
 		FROM inspectuser.events
 		WHERE project_id = ? AND event_type = 'Element Clicked'
-		  AND JSONExtractString(properties, 'path') = '`+safePath+`' AND event_time >= toDate('`+since+`')
+		  AND p_path = '`+safePath+`' AND event_time >= toDate('`+since+`')
 		GROUP BY label HAVING label != '' ORDER BY c DESC LIMIT 15
 	`, projectID); err == nil {
 		defer rows.Close()
@@ -211,7 +211,7 @@ func (h *HeatmapHandler) Snapshot(c fiber.Ctx) error {
 	if rows, err := h.ch.Query(ctx, `
 		SELECT session_id FROM inspectuser.events
 		WHERE project_id = ? AND event_type = 'Page Viewed'
-		  AND JSONExtractString(properties, 'path') = '`+safePath+`'
+		  AND p_path = '`+safePath+`'
 		  AND session_id != '' AND event_time >= toDate('`+since+`')
 		GROUP BY session_id ORDER BY max(event_time) DESC LIMIT 300
 	`, projectID); err == nil {
