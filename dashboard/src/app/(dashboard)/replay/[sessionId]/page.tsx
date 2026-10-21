@@ -57,12 +57,21 @@ export default function ReplayPlayerPage({ params }: { params: Promise<{ session
     const target = ref.current
     let cancelled = false
 
+    // Chunks are stored/concatenated by the server in insert-time order, which can
+    // reorder a large full-snapshot chunk behind a small incremental chunk that
+    // inserted first — that leaves incremental events ahead of the full snapshot
+    // they depend on and the player freezes on the first frame. Every rrweb event
+    // carries a monotonic `timestamp`; a stable sort by it restores true capture
+    // order regardless of how the chunks landed.
+    const ordered = [...(events as Array<{ timestamp?: number }>)]
+      .sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0)) as unknown[]
+
     // True recorded viewport comes from the Meta event (type 4) — rrweb sets the
     // dimensions on the iframe, NOT on .replayer-wrapper's inline style, so
     // reading wrapper.style.width was unreliable and defaulted to 1280. A wider
     // recording then rendered at native size (scale clamped to 1), left-aligned
     // and overflowing off the right. Reading the meta gives the correct width.
-    const meta = (events as Array<{ type?: number; data?: { width?: number; height?: number } }>)
+    const meta = (ordered as Array<{ type?: number; data?: { width?: number; height?: number } }>)
       .find(e => e?.type === 4)?.data
     const recW = meta?.width || 1280
     const recH = meta?.height || 800
@@ -93,7 +102,7 @@ export default function ReplayPlayerPage({ params }: { params: Promise<{ session
         if (cancelled || !ref.current) return
         target.innerHTML = ''
         const Ctor = (mod as unknown as { Replayer: new (e: unknown[], o: unknown) => Replayer }).Replayer
-        const r = new Ctor(events, {
+        const r = new Ctor(ordered, {
           root: target,
           mouseTail: { strokeStyle: '#0052F2', lineWidth: 3, duration: 600 },
           skipInactive: true,

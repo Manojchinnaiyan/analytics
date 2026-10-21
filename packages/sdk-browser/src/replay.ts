@@ -3,16 +3,18 @@
 // endpoint. Folded into the SDK so one init() does analytics + replay, the way
 // PostHog/Amplitude ship it.
 //
-// NOTE on idle: we never stop/restart rrweb (that corrupts the event stream —
-// incremental events depend on a continuous mirror). Instead, while the tab is
-// hidden we keep rrweb running but DROP its output so idle background mutations
-// don't inflate the session; on return we force one full snapshot to re-sync the
-// player. Storage is further controlled by sampleRate + throttled signals.
+// NOTE on idle: we record CONTINUOUSLY and never drop emitted events. An earlier
+// version paused on idle by dropping rrweb's output and re-syncing with a fresh
+// full snapshot on resume — but dropping emitted events while rrweb's mirror keeps
+// mutating desyncs the stream, and the extra mid-stream snapshot chunks reorder
+// against the periodic chunks (the store concatenates by server insert-time), so
+// the player received incrementals before their full snapshot and froze on the
+// first frame. Idle *viewing* time is trimmed at playback by the Replayer's
+// skipInactive; payload size is controlled by sampleRate + throttled sampling.
 
 import { record } from 'rrweb'
 
 const FLUSH_INTERVAL_MS = 8000
-const IDLE_MS = 60000 // pause recording after 60s of no user interaction
 
 let started = false
 
@@ -50,7 +52,6 @@ export function startSessionReplay(cfg: ReplayConfig): void {
 
   const begin = () => {
     let buf: unknown[] = []
-    let paused = false // true while the tab is hidden — stops idle time inflating the session
 
     // flush() is defined BEFORE record() because rrweb emits the initial full
     // snapshot synchronously during record(), and emit() flushes it right away.
@@ -84,7 +85,6 @@ export function startSessionReplay(cfg: ReplayConfig): void {
 
     record({
       emit(event) {
-        if (paused) return // tab hidden: don't record idle background mutations
         buf.push(event)
         // Full snapshot (type 2) is large AND critical — upload it immediately so
         // a quick navigation can't drop it before the periodic flush.
@@ -97,32 +97,15 @@ export function startSessionReplay(cfg: ReplayConfig): void {
       sampling: { mousemove: 50, scroll: 150, input: 'last' },
     })
 
-    setInterval(() => { if (!paused) flush(false) }, FLUSH_INTERVAL_MS)
+    setInterval(() => flush(false), FLUSH_INTERVAL_MS)
 
-    // PAUSE recording when the user is inactive — the tab is hidden OR there's
-    // been no interaction for IDLE_MS. Otherwise a left-open / idle tab keeps
-    // recording the page's background DOM mutations (carousels, timers, ads) and
-    // the duration grows with dead air. On the next activity we resume and force
-    // one full snapshot to re-sync the player (we never stop/restart rrweb — that
-    // corrupts the stream — we only gate its output).
-    const snapshot = () => {
-      try { (record as unknown as { takeFullSnapshot?: (c?: boolean) => void }).takeFullSnapshot?.(true) } catch { /* noop */ }
-    }
-    let idleTimer: ReturnType<typeof setTimeout> | undefined
-    const goIdle = () => { flush(false); paused = true }
-    const bump = () => {
-      if (paused) { paused = false; snapshot() } // resume on activity
-      clearTimeout(idleTimer)
-      idleTimer = setTimeout(goIdle, IDLE_MS)
-    }
-    ;(['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'wheel'] as const).forEach(ev =>
-      window.addEventListener(ev, bump, { passive: true, capture: true }),
-    )
+    // On tab-hide, beacon out whatever is buffered so a close/nav doesn't drop the
+    // tail. We keep recording continuously otherwise — idle *viewing* time is
+    // trimmed at playback by the Replayer's skipInactive, so we never need to drop
+    // emitted events here (doing so desyncs rrweb's mirror and breaks the replay).
     document.addEventListener('visibilitychange', () => {
-      if (document.hidden) { flush(true); paused = true; clearTimeout(idleTimer) }
-      else bump()
+      if (document.hidden) flush(true)
     })
-    bump() // arm the idle timer
   }
 
   // Skip replay entirely on data-saver mode or very slow (2g) connections — the
